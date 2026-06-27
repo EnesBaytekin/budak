@@ -1,0 +1,64 @@
+# Tudo — Production Docker Compose
+# This file is included in GitHub releases.
+# Copy .env.example to .env and fill in your settings.
+# Then run: docker compose up -d
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${TUDO_CERTS_DIR:-./certs}:/certs:ro
+      - caddy_data:/data
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - tudo-net
+
+  backend:
+    image: imns/tudo-backend:${TUDO_VERSION:-latest}
+    environment:
+      - DB_URL=postgres://${DB_USER:-tudo}:${DB_PASSWORD:-tudo}@db:5432/${DB_NAME:-tudo}
+      - JWT_SECRET=${JWT_SECRET}
+      - REGISTRATION_OPEN=${REGISTRATION_OPEN:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - tudo-net
+
+  frontend:
+    image: imns/tudo-frontend:${TUDO_VERSION:-latest}
+    restart: unless-stopped
+    networks:
+      - tudo-net
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-tudo}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-tudo}
+      POSTGRES_DB: ${DB_NAME:-tudo}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tudo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - tudo-net
+
+volumes:
+  pgdata:
+  caddy_data:
+
+networks:
+  tudo-net:

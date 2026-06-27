@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS mindmap_positions;
+DROP TABLE IF EXISTS todos;
+DROP TABLE IF EXISTS trees;
+DROP TABLE IF EXISTS users;
