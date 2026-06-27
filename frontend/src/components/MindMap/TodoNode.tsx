@@ -35,26 +35,37 @@ export const TodoNode = memo(({ data }: NodeProps) => {
     if (onToggle) onToggle(todo.id, !todo.done);
   }, [todo.id, todo.done, onToggle]);
 
+  const childCount = todo.children?.length ?? 0;
+  const maxDepth = todo.children ? maxNestDepth(todo.children) : 0;
+
   return (
     <div
-      className={`min-w-[160px] max-w-[240px] rounded-xl border-2 shadow-md transition-all ${
+      className={`min-w-[150px] max-w-[220px] rounded-lg border shadow-lg transition-all ${
         todo.done
-          ? "bg-green-50 border-green-300 opacity-75"
-          : "bg-white border-blue-200 hover:shadow-lg"
+          ? "bg-done-bg border-mint/30 opacity-70"
+          : "bg-panel border-border hover:border-lavender/40"
       }`}
       onDoubleClick={handleDoubleClick}
     >
-      <Handle type="target" position={Position.Left} className="!bg-gray-400" />
-      <Handle type="source" position={Position.Right} className="!bg-gray-400" />
+      <Handle type="target" position={Position.Left} className="!bg-line !w-2 !h-2 !border-0" />
+      <Handle type="source" position={Position.Right} className="!bg-line !w-2 !h-2 !border-0" />
 
-      <div className="p-3">
+      <div className="p-2.5">
         <div className="flex items-start gap-2">
-          <input
-            type="checkbox"
-            checked={todo.done}
-            onChange={handleToggle}
-            className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
-          />
+          <button
+            onClick={handleToggle}
+            className={`mt-0.5 w-4 h-4 rounded-sm border shrink-0 flex items-center justify-center transition ${
+              todo.done
+                ? "bg-mint/30 border-mint/50 text-mint"
+                : "bg-elevated border-border hover:border-lavender/50"
+            }`}
+          >
+            {todo.done && (
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
           <div className="flex-1 min-w-0">
             {isEditing ? (
               <input
@@ -67,36 +78,45 @@ export const TodoNode = memo(({ data }: NodeProps) => {
                   if (e.key === "Enter") handleSave();
                   if (e.key === "Escape") setIsEditing(false);
                 }}
-                className="w-full px-1 py-0.5 text-sm border border-blue-400 rounded outline-none"
+                className="w-full bg-elevated border border-lavender/50 rounded-sm px-1 py-0.5 text-xs text-fg outline-none"
                 autoFocus
               />
             ) : (
               <span
-                className={`text-sm block cursor-text ${
-                  todo.done ? "line-through text-gray-400" : "text-gray-800"
+                className={`text-xs block cursor-text leading-relaxed ${
+                  todo.done ? "line-through text-fg-muted" : "text-fg"
                 }`}
               >
-                {todo.title || "Untitled"}
+                {todo.title || "untitled"}
               </span>
-            )}
-            {todo.note && (
-              <p className="text-xs text-gray-400 mt-1 truncate">{todo.note}</p>
             )}
           </div>
         </div>
 
-        {/* Children count badge */}
-        {todo.children && todo.children.length > 0 && (
-          <div className="mt-1.5 text-xs text-gray-400 flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-            {todo.children.length} sub-task{todo.children.length > 1 ? "s" : ""}
+        {childCount > 0 && (
+          <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-fg-muted">
+            <span className="bg-elevated px-1.5 py-0.5 rounded-sm leading-none">
+              {childCount} sub{childCount > 1 ? "s" : ""}
+            </span>
+            {maxDepth > 0 && (
+              <span className="bg-elevated px-1.5 py-0.5 rounded-sm leading-none">
+                depth {maxDepth + 1}
+              </span>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 });
+
+function maxNestDepth(children: Todo[]): number {
+  let max = 0;
+  for (const c of children) {
+    const d = c.children ? 1 + maxNestDepth(c.children) : 0;
+    if (d > max) max = d;
+  }
+  return max;
+}
 
 TodoNode.displayName = "TodoNode";

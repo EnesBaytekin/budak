@@ -18,47 +18,51 @@ export function LoginPage({ onSwitch }: { onSwitch: () => void }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
+      <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Tudo</h1>
-          <p className="text-gray-500 mt-2">Tree-based todo app</p>
+          <h1 className="text-5xl font-bold text-lavender">tudo</h1>
+          <p className="text-fg-muted mt-2 text-sm">tree-based todo app</p>
         </div>
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800">Sign in</h2>
-          {error && <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm">{error}</div>}
+        <form onSubmit={handleSubmit} className="bg-panel rounded-xl border border-border p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-fg">sign in</h2>
+          {error && (
+            <div className="bg-danger-bg border border-danger/30 text-danger px-4 py-2 rounded-sm text-sm">
+              {error}
+            </div>
+          )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label className="block text-sm text-fg-soft mb-1.5">username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full bg-elevated border border-border rounded-sm px-3 py-2 text-sm text-fg placeholder:text-fg-muted outline-none focus:border-lavender/50 transition"
               placeholder="your username"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm text-fg-soft mb-1.5">password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full bg-elevated border border-border rounded-sm px-3 py-2 text-sm text-fg placeholder:text-fg-muted outline-none focus:border-lavender/50 transition"
               placeholder="••••••••"
               required
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+            className="w-full bg-lavender/20 text-lavender border border-lavender/30 rounded-sm px-4 py-2 text-sm font-medium hover:bg-lavender/30 transition"
           >
-            Sign In
+            sign in
           </button>
-          <p className="text-center text-sm text-gray-500">
-            Don't have an account?{" "}
-            <button type="button" onClick={onSwitch} className="text-blue-600 hover:underline">
-              Register
+          <p className="text-center text-sm text-fg-muted">
+            no account?{" "}
+            <button type="button" onClick={onSwitch} className="text-blue hover:underline">
+              register
             </button>
           </p>
         </form>

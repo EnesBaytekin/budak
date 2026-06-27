@@ -15,7 +15,7 @@ export function TodoTreeView() {
   return (
     <div className="h-full flex flex-col">
       {/* Add root todo */}
-      <div className="p-3 border-b border-gray-200 bg-white">
+      <div className="p-3 border-b border-border bg-panel">
         <div className="flex items-center gap-2 max-w-xl">
           <input
             type="text"
@@ -24,15 +24,15 @@ export function TodoTreeView() {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleAddRoot();
             }}
-            placeholder="Add a new todo..."
-            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            placeholder="add a new todo..."
+            className="flex-1 bg-elevated border border-border rounded-sm px-3 py-1.5 text-sm text-fg placeholder:text-fg-muted outline-none focus:border-lavender/50 transition"
           />
           <button
             onClick={handleAddRoot}
             disabled={!newTitle.trim()}
-            className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="px-4 py-1.5 bg-lavender/20 text-lavender border border-lavender/30 rounded-sm text-sm font-medium hover:bg-lavender/30 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            Add
+            add
           </button>
         </div>
       </div>
@@ -40,10 +40,10 @@ export function TodoTreeView() {
       {/* Tree */}
       <div className="flex-1 overflow-y-auto p-3">
         {todos.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400">
+          <div className="flex items-center justify-center h-full text-fg-muted">
             <div className="text-center">
-              <div className="text-4xl mb-2">🌱</div>
-              <p>No todos yet. Add one above!</p>
+              <div className="text-3xl mb-2 text-fg-muted/40">⊞</div>
+              <p className="text-sm">no todos yet. add one above!</p>
             </div>
           </div>
         ) : (

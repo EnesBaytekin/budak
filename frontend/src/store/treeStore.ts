@@ -3,6 +3,18 @@ import * as treesApi from "../api/trees";
 import * as todosApi from "../api/todos";
 import type { Tree, Todo } from "../types";
 
+function flatten(todos: Todo[]): { todo: Todo; parentId: string | null }[] {
+  const result: { todo: Todo; parentId: string | null }[] = [];
+  const walk = (items: Todo[], pid: string | null) => {
+    for (const t of items) {
+      result.push({ todo: t, parentId: pid });
+      if (t.children) walk(t.children, t.id);
+    }
+  };
+  walk(todos, null);
+  return result;
+}
+
 interface TreeState {
   trees: Tree[];
   selectedTreeID: string | null;
@@ -16,6 +28,8 @@ interface TreeState {
   toggleTodo: (todoID: string, done: boolean) => Promise<void>;
   updateTodoTitle: (todoID: string, title: string) => Promise<void>;
   deleteTodo: (todoID: string) => Promise<void>;
+  indentTodo: (todoID: string) => Promise<void>;
+  outdentTodo: (todoID: string) => Promise<void>;
 }
 
 export const useTreeStore = create<TreeState>((set, get) => ({
@@ -59,7 +73,6 @@ export const useTreeStore = create<TreeState>((set, get) => ({
 
   toggleTodo: async (todoID, done) => {
     await todosApi.updateTodo(todoID, { done });
-    // Reload current tree
     const treeID = get().selectedTreeID;
     if (treeID) {
       const res = await treesApi.getTree(treeID);
@@ -83,5 +96,34 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       const res = await treesApi.getTree(treeID);
       set({ todos: res.todos });
     }
+  },
+
+  indentTodo: async (todoID) => {
+    const treeID = get().selectedTreeID;
+    if (!treeID) return;
+    const flat = flatten(get().todos);
+    const idx = flat.findIndex((f) => f.todo.id === todoID);
+    if (idx < 1) return;
+    const current = flat[idx];
+    const siblings = flat.filter((f) => f.parentId === current.parentId);
+    const sibIdx = siblings.findIndex((s) => s.todo.id === todoID);
+    if (sibIdx < 1) return;
+    const newParentId = siblings[sibIdx - 1].todo.id;
+    await todosApi.moveTodo(todoID, newParentId, 0);
+    const res = await treesApi.getTree(treeID);
+    set({ todos: res.todos });
+  },
+
+  outdentTodo: async (todoID) => {
+    const treeID = get().selectedTreeID;
+    if (!treeID) return;
+    const flat = flatten(get().todos);
+    const item = flat.find((f) => f.todo.id === todoID);
+    if (!item || !item.parentId) return;
+    const parent = flat.find((f) => f.todo.id === item.parentId);
+    const newParentId = parent?.parentId ?? null;
+    await todosApi.moveTodo(todoID, newParentId, 0);
+    const res = await treesApi.getTree(treeID);
+    set({ todos: res.todos });
   },
 }));

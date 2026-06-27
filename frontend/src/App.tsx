@@ -14,10 +14,10 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="text-center">
-          <div className="text-4xl mb-4 animate-pulse">📋</div>
-          <p className="text-gray-500">Loading...</p>
+          <div className="text-4xl mb-4 animate-pulse text-lavender">📋</div>
+          <p className="text-fg-muted">Loading...</p>
         </div>
       </div>
     );

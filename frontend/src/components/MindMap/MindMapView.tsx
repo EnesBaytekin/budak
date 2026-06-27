@@ -27,16 +27,12 @@ export function MindMapView() {
   const updateTodoTitle = useTreeStore((s) => s.updateTodoTitle);
   const selectedTreeID = useTreeStore((s) => s.selectedTreeID);
 
-  const {
-    getDefaultPosition,
-    markDirty,
-    batchSave,
-    dirtyNodes,
-  } = useMindmapStore();
+  const { getDefaultPosition, markDirty, batchSave, dirtyNodes } = useMindmapStore();
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([] as Node[]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([] as Edge[]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadDone = useRef(false);
 
   // Build nodes and edges from todos
   useEffect(() => {
@@ -73,9 +69,9 @@ export function MindMapView() {
               source: t.id,
               target: child.id,
               type: "smoothstep",
-              animated: false,
-              style: { stroke: "#94a3b8", strokeWidth: 2 },
-              markerEnd: { type: MarkerType.ArrowClosed, color: "#94a3b8" },
+              animated: true,
+              style: { stroke: "#38385a", strokeWidth: 2 },
+              markerEnd: { type: MarkerType.ArrowClosed, color: "#38385a" },
             });
             addEdges([child]);
           }
@@ -86,6 +82,7 @@ export function MindMapView() {
 
     setNodes(newNodes);
     setEdges(newEdges);
+    initialLoadDone.current = true;
   }, [todos, getDefaultPosition, toggleTodo, updateTodoTitle, setNodes, setEdges]);
 
   // Save dirty positions periodically
@@ -108,6 +105,7 @@ export function MindMapView() {
         batchSave(selectedTreeID);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onNodeDragStop = useCallback(
@@ -121,17 +119,17 @@ export function MindMapView() {
 
   if (todos.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
+      <div className="flex items-center justify-center h-full text-fg-muted">
         <div className="text-center">
-          <div className="text-4xl mb-2">🧠</div>
-          <p>Add some todos in Tree view first</p>
+          <div className="text-3xl mb-2 text-fg-muted/40">◎</div>
+          <p className="text-sm">add some todos in tree view first</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full bg-canvas">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -143,14 +141,18 @@ export function MindMapView() {
         attributionPosition="bottom-left"
         minZoom={0.1}
         maxZoom={4}
+        defaultEdgeOptions={{
+          style: { stroke: "#38385a", strokeWidth: 2 },
+          type: "smoothstep",
+        }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e2e8f0" />
-        <Controls />
+        <Background variant={BackgroundVariant.Dots} gap={25} size={1.5} color="#1e1e36" />
+        <Controls showInteractive={false} />
         <MiniMap
-          nodeStrokeColor="#6366f1"
-          nodeColor={(n: Node) => ((n.data as any)?.todo?.done ? "#bbf7d0" : "#ffffff")}
-          maskColor="rgba(0,0,0,0.1)"
-          style={{ border: "1px solid #e2e8f0", borderRadius: "8px" }}
+          nodeStrokeColor="#38385a"
+          nodeColor={(n) => ((n.data as any)?.todo?.done ? "#142114" : "#1e1e36")}
+          maskColor="rgba(13,13,26,0.7)"
+          style={{ background: "#16162a" }}
         />
       </ReactFlow>
     </div>
