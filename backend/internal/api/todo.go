@@ -38,11 +38,8 @@ func (h *TodoHandler) Create(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if req.Title == "" {
-		req.Title = "New Todo"
-	}
 
-	todo, err := h.todoRepo.CreateTodo(r.Context(), treeID, req.ParentID, req.Title)
+	todo, err := h.todoRepo.CreateTodo(r.Context(), treeID, req.ParentID, req.Title, req.BeforeID)
 	if err != nil {
 		jsonError(w, "failed to create todo", http.StatusInternalServerError)
 		return

@@ -19,63 +19,77 @@ export function RegisterPage({ onSwitch }: { onSwitch: () => void }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
+    <div className="min-h-screen flex items-center justify-center bg-base-100 px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-lavender">tudo</h1>
-          <p className="text-fg-muted mt-2 text-sm">create your account</p>
+          <h1 className="text-4xl font-bold text-primary">tudo</h1>
+          <p className="text-base-content/60 text-sm mt-1">create your account</p>
         </div>
-        <form onSubmit={handleSubmit} className="bg-panel rounded-xl border border-border p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-fg">register</h2>
-          {error && (
-            <div className="bg-danger-bg border border-danger/30 text-danger px-4 py-2 rounded-sm text-sm">
-              {error}
-            </div>
-          )}
-          <div>
-            <label className="block text-sm text-fg-soft mb-1.5">username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-elevated border border-border rounded-sm px-3 py-2 text-sm text-fg placeholder:text-fg-muted outline-none focus:border-lavender/50 transition"
-              required
-            />
+
+        <div className="card bg-base-200 border border-base-300">
+          <div className="card-body gap-4">
+            <h2 className="card-title text-base-content text-lg">register</h2>
+
+            {error && (
+              <div role="alert" className="alert alert-error text-sm py-2">
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <label className="form-control w-full">
+                <div className="label py-0 pb-1">
+                  <span className="label-text text-base-content/70 text-sm">username</span>
+                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="input input-bordered w-full text-sm"
+                  required
+                />
+              </label>
+
+              <label className="form-control w-full">
+                <div className="label py-0 pb-1">
+                  <span className="label-text text-base-content/70 text-sm">email</span>
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input input-bordered w-full text-sm"
+                  required
+                />
+              </label>
+
+              <label className="form-control w-full">
+                <div className="label py-0 pb-1">
+                  <span className="label-text text-base-content/70 text-sm">password</span>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input input-bordered w-full text-sm"
+                  required
+                  minLength={6}
+                />
+              </label>
+
+              <button type="submit" className="btn btn-secondary btn-sm mt-2">
+                create account
+              </button>
+            </form>
+
+            <p className="text-center text-sm text-base-content/50">
+              already have an account?{" "}
+              <button onClick={onSwitch} className="link link-primary">
+                sign in
+              </button>
+            </p>
           </div>
-          <div>
-            <label className="block text-sm text-fg-soft mb-1.5">email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-elevated border border-border rounded-sm px-3 py-2 text-sm text-fg placeholder:text-fg-muted outline-none focus:border-lavender/50 transition"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-fg-soft mb-1.5">password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-elevated border border-border rounded-sm px-3 py-2 text-sm text-fg placeholder:text-fg-muted outline-none focus:border-lavender/50 transition"
-              required
-              minLength={6}
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-mint/20 text-mint border border-mint/30 rounded-sm px-4 py-2 text-sm font-medium hover:bg-mint/30 transition"
-          >
-            create account
-          </button>
-          <p className="text-center text-sm text-fg-muted">
-            already have an account?{" "}
-            <button type="button" onClick={onSwitch} className="text-blue hover:underline">
-              sign in
-            </button>
-          </p>
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { Todo } from "../../types";
 import { useTreeStore } from "../../store/treeStore";
+import { ChevronRight, Check, Trash2, Plus } from "lucide-react";
 
 interface TreeNodeProps {
   todo: Todo;
@@ -10,101 +11,185 @@ interface TreeNodeProps {
 export function TreeNode({ todo, depth }: TreeNodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
-  const [isAddingChild, setIsAddingChild] = useState(false);
-  const [childTitle, setChildTitle] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+  const [dragOver, setDragOver] = useState<"before" | "after" | "child" | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const childInputRef = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const isDragging = useRef(false);
 
-  const { toggleTodo, updateTodoTitle, deleteTodo, createTodo, indentTodo, outdentTodo } = useTreeStore();
+  const {
+    toggleTodo,
+    updateTodoTitle,
+    deleteTodo,
+    createTodo,
+    editingTodoID,
+    setEditingTodoID,
+    activeTodoID,
+    setActiveTodoID,
+    indentTodo,
+    outdentTodo,
+    moveTodoToParent,
+  } = useTreeStore();
   const hasChildren = todo.children && todo.children.length > 0;
 
-  const handleToggle = () => {
+  useEffect(() => {
+    if (editingTodoID !== todo.id) return;
+    setEditTitle(todo.title);
+    setIsEditing(true);
+    setEditingTodoID(null);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [editingTodoID, todo.id, todo.title, setEditingTodoID]);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
     toggleTodo(todo.id, !todo.done);
   };
 
-  const handleTitleClick = () => {
+  const startEdit = () => {
     setEditTitle(todo.title);
     setIsEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
-  const handleTitleSave = () => {
+  const saveEdit = () => {
     if (editTitle.trim() && editTitle !== todo.title) {
       updateTodoTitle(todo.id, editTitle.trim());
     }
     setIsEditing(false);
   };
 
-  const handleAddChild = async () => {
-    if (!childTitle.trim()) return;
-    await createTodo(childTitle.trim(), todo.id);
-    setChildTitle("");
-    setIsAddingChild(false);
-    setCollapsed(false);
+  const handleClick = () => setActiveTodoID(todo.id);
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    startEdit();
   };
 
-  return (
-    <div className="select-none">
-      <div
-        className={`group flex items-center gap-1 py-1 px-2 rounded-sm transition ${
-          todo.done ? "opacity-50" : "hover:bg-hover"
-        }`}
-        style={{ paddingLeft: `${depth * 20 + 8}px` }}
-      >
-        {/* indent / outdent handles */}
-        <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition shrink-0 mr-0.5">
-          <button
-            onClick={() => indentTodo(todo.id)}
-            className="w-5 h-5 flex items-center justify-center text-fg-muted hover:text-blue rounded-sm hover:bg-hover transition"
-            title="Make child of previous item"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h12M3 14h12M3 18h18" />
-            </svg>
-          </button>
-          <button
-            onClick={() => outdentTodo(todo.id)}
-            className="w-5 h-5 flex items-center justify-center text-fg-muted hover:text-peach rounded-sm hover:bg-hover transition"
-            title="Move up one level"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M9 6l-6 6 6 6" />
-            </svg>
-          </button>
-        </div>
+  const handleInputKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") { e.stopPropagation(); saveEdit(); }
+    if (e.key === "Escape") { e.stopPropagation(); setIsEditing(false); }
+    e.stopPropagation();
+  };
 
-        {/* Collapse toggle */}
+  // Long press → enter drag mode
+  const handlePointerDown = () => {
+    longPressTimer.current = setTimeout(() => {
+      isDragging.current = true;
+    }, 400);
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    // If we were dragging, don't trigger click
+    if (isDragging.current) {
+      isDragging.current = false;
+      return;
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    // Start native drag
+    e.preventDefault();
+    // Could implement HTML5 drag, but for now just activate
+  };
+
+  // Add sub-task
+  const handleAddSub = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const id = await createTodo("", todo.id);
+    if (id) setEditingTodoID(id);
+  };
+
+  // HTML5 Drag & Drop for reordering
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("text/plain", todo.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+
+    const rect = rowRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const y = e.clientY - rect.top;
+    const h = rect.height;
+
+    if (y < h * 0.25) setDragOver("before");
+    else if (y > h * 0.75) setDragOver("after");
+    else setDragOver("child");
+  };
+
+  const handleDragLeave = () => setDragOver(null);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(null);
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId || draggedId === todo.id) return;
+
+    const position = dragOver;
+    if (position === "child") {
+      moveTodoToParent(draggedId, todo.id);
+    } else {
+      // before/after: move to same parent level
+      moveTodoToParent(draggedId, todo.parent_id);
+    }
+  };
+
+  const isActive = activeTodoID === todo.id;
+  const dropClass = dragOver === "before" ? "border-t-2 border-primary" :
+    dragOver === "after" ? "border-b-2 border-primary" :
+    dragOver === "child" ? "bg-primary/10 rounded-xl" : "";
+
+  return (
+    <div className="select-none" draggable onDragStart={handleDragStart}>
+      {/* Drop indicator above */}
+      {dragOver === "before" && <div className="h-0.5 bg-primary mx-2 rounded-full" />}
+
+      <div
+        ref={rowRef}
+        className={`group flex items-center gap-2 px-2 py-2.5 rounded-xl transition cursor-pointer ${dropClass} ${
+          isActive
+            ? "bg-primary/5"
+            : todo.done
+              ? "opacity-50 hover:bg-base-100"
+              : "hover:bg-base-100"
+        }`}
+        style={{ paddingLeft: `${depth * 24 + 8}px` }}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerMove={handlePointerMove}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {/* Collapse */}
         {hasChildren ? (
           <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-4 h-4 flex items-center justify-center text-fg-muted hover:text-fg shrink-0"
+            onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
+            className="btn btn-ghost btn-xs p-0 w-6 h-6 min-h-0 text-base-content/30 hover:text-base-content/60"
           >
-            <svg
-              className={`w-3 h-3 transition-transform ${collapsed ? "" : "rotate-90"}`}
-              fill="none" viewBox="0 0 24 24" stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <ChevronRight size={16} className={`transition-transform ${collapsed ? "" : "rotate-90"}`} />
           </button>
         ) : (
-          <div className="w-4 shrink-0" />
+          <div className="w-6 shrink-0" />
         )}
 
-        {/* Checkbox */}
+        {/* Checkbox — round, Google Keep style */}
         <button
           onClick={handleToggle}
-          className={`w-4 h-4 rounded-sm border shrink-0 flex items-center justify-center transition ${
+          className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center border-2 transition ${
             todo.done
-              ? "bg-mint/30 border-mint/50 text-mint"
-              : "bg-elevated border-border hover:border-lavender/50"
+              ? "bg-success/20 border-success/40 text-success"
+              : "border-base-300 hover:border-primary/40 bg-base-100"
           }`}
         >
-          {todo.done && (
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
-          )}
+          {todo.done && <Check size={12} strokeWidth={3} />}
         </button>
 
         {/* Title */}
@@ -114,64 +199,61 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
             type="text"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            onBlur={handleTitleSave}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleTitleSave();
-              if (e.key === "Escape") setIsEditing(false);
-            }}
-            className="flex-1 min-w-0 bg-elevated border border-lavender/50 rounded-sm px-1.5 py-0.5 text-sm text-fg outline-none"
+            onBlur={saveEdit}
+            onKeyDown={handleInputKey}
+            className="flex-1 min-w-0 bg-transparent text-sm text-base-content outline-none px-1 rounded"
             autoFocus
           />
         ) : (
           <span
-            onClick={handleTitleClick}
-            className={`flex-1 min-w-0 text-sm cursor-text truncate ${
-              todo.done ? "line-through text-fg-muted" : "text-fg"
+            className={`flex-1 min-w-0 text-sm leading-relaxed ${
+              todo.done ? "line-through text-base-content/40" : "text-base-content"
             }`}
           >
             {todo.title || "untitled"}
           </span>
         )}
 
-        {/* Actions */}
+        {/* Actions — visible on hover */}
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0">
+          {/* Add sub — visible on hover */}
           <button
-            onClick={() => { setIsAddingChild(true); setTimeout(() => childInputRef.current?.focus(), 0); }}
-            className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-mint rounded-sm hover:bg-hover transition"
+            onClick={handleAddSub}
+            className="btn btn-ghost btn-xs p-0 w-6 h-6 min-h-0 text-base-content/30 hover:text-primary"
             title="Add sub-task"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus size={14} />
+          </button>
+          {/* Indent/outdent */}
+          <button
+            onClick={(e) => { e.stopPropagation(); indentTodo(todo.id); }}
+            className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/20 hover:text-primary/60"
+            title="Indent"
+          >
+            <span className="text-xs font-bold">↳</span>
           </button>
           <button
-            onClick={() => { if (confirm("Delete this todo?")) deleteTodo(todo.id); }}
-            className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-danger rounded-sm hover:bg-danger-bg transition"
+            onClick={(e) => { e.stopPropagation(); outdentTodo(todo.id); }}
+            className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/20 hover:text-secondary/60"
+            title="Outdent"
+          >
+            <span className="text-xs font-bold">↰</span>
+          </button>
+          {/* Delete */}
+          <button
+            onClick={(e) => { e.stopPropagation(); if (confirm("Delete?")) deleteTodo(todo.id); }}
+            className="btn btn-ghost btn-xs p-0 w-6 h-6 min-h-0 text-base-content/20 hover:text-error/60"
             title="Delete"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
+            <Trash2 size={13} />
           </button>
         </div>
       </div>
 
-      {/* Add child input */}
-      {isAddingChild && (
-        <div style={{ paddingLeft: `${(depth + 1) * 20 + 32}px` }} className="py-1">
-          <input
-            ref={childInputRef}
-            type="text"
-            value={childTitle}
-            onChange={(e) => setChildTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddChild();
-              if (e.key === "Escape") { setIsAddingChild(false); setChildTitle(""); }
-            }}
-            onBlur={() => { if (!childTitle.trim()) { setIsAddingChild(false); } }}
-            placeholder="add sub-task..."
-            className="w-full max-w-xs bg-elevated border border-border rounded-sm px-2 py-1 text-xs text-fg placeholder:text-fg-muted outline-none focus:border-mint/50 transition"
-          />
+      {/* Drop child indicator */}
+      {dragOver === "child" && (
+        <div className="text-[10px] text-primary/60 px-4 pb-1 italic">
+          drop as child of &quot;{todo.title}&quot;
         </div>
       )}
 

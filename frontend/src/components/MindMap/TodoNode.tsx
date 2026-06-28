@@ -1,28 +1,36 @@
 import { memo, useState, useCallback, useEffect, useRef } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { Todo } from "../../types";
+import { Check, Plus } from "lucide-react";
+import { useTreeStore } from "../../store/treeStore";
 
 type TodoNodeData = {
   todo: Todo;
   onToggle?: (id: string, done: boolean) => void;
   onTitleChange?: (id: string, title: string) => void;
+  onAddChild?: (parentId: string) => void;
 };
 
 export const TodoNode = memo(({ data }: NodeProps) => {
-  const { todo, onToggle, onTitleChange } = data as TodoNodeData;
+  const { todo, onToggle, onTitleChange, onAddChild } = data as TodoNodeData;
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const editingTodoID = useTreeStore((s) => s.editingTodoID);
+  const setEditingTodoID = useTreeStore((s) => s.setEditingTodoID);
 
   useEffect(() => {
     setEditTitle(todo.title);
   }, [todo.title]);
 
-  const handleDoubleClick = useCallback(() => {
+  useEffect(() => {
+    if (editingTodoID !== todo.id) return;
     setEditTitle(todo.title);
     setIsEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  }, [todo.title]);
+    setEditingTodoID(null);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [editingTodoID, todo.id, todo.title, setEditingTodoID]);
 
   const handleSave = useCallback(() => {
     if (editTitle.trim() && editTitle !== todo.title && onTitleChange) {
@@ -31,41 +39,44 @@ export const TodoNode = memo(({ data }: NodeProps) => {
     setIsEditing(false);
   }, [editTitle, todo.id, todo.title, onTitleChange]);
 
+  const handleDoubleClick = useCallback(() => {
+    setEditTitle(todo.title);
+    setIsEditing(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [todo.title]);
+
   const handleToggle = useCallback(() => {
     if (onToggle) onToggle(todo.id, !todo.done);
   }, [todo.id, todo.done, onToggle]);
 
   const childCount = todo.children?.length ?? 0;
-  const maxDepth = todo.children ? maxNestDepth(todo.children) : 0;
 
   return (
     <div
-      className={`min-w-[150px] max-w-[220px] rounded-lg border shadow-lg transition-all ${
+      className={`rounded-xl border-2 shadow-md transition-all min-w-[150px] max-w-[230px] ${
         todo.done
-          ? "bg-done-bg border-mint/30 opacity-70"
-          : "bg-panel border-border hover:border-lavender/40"
+          ? "bg-success/5 border-success/20"
+          : "bg-base-100 border-base-300 hover:border-primary/40"
       }`}
       onDoubleClick={handleDoubleClick}
     >
-      <Handle type="target" position={Position.Left} className="!bg-line !w-2 !h-2 !border-0" />
-      <Handle type="source" position={Position.Right} className="!bg-line !w-2 !h-2 !border-0" />
+      {/* Invisible center handles */}
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
+      <Handle type="source" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
 
-      <div className="p-2.5">
+      <div className="p-3">
         <div className="flex items-start gap-2">
           <button
-            onClick={handleToggle}
-            className={`mt-0.5 w-4 h-4 rounded-sm border shrink-0 flex items-center justify-center transition ${
+            onClick={(e) => { e.stopPropagation(); handleToggle(); }}
+            className={`mt-0.5 w-5 h-5 rounded-full shrink-0 flex items-center justify-center border-2 transition ${
               todo.done
-                ? "bg-mint/30 border-mint/50 text-mint"
-                : "bg-elevated border-border hover:border-lavender/50"
+                ? "bg-success/20 border-success/40 text-success"
+                : "bg-base-100 border-base-300 hover:border-primary/40"
             }`}
           >
-            {todo.done && (
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
+            {todo.done && <Check size={12} strokeWidth={3} />}
           </button>
+
           <div className="flex-1 min-w-0">
             {isEditing ? (
               <input
@@ -78,13 +89,13 @@ export const TodoNode = memo(({ data }: NodeProps) => {
                   if (e.key === "Enter") handleSave();
                   if (e.key === "Escape") setIsEditing(false);
                 }}
-                className="w-full bg-elevated border border-lavender/50 rounded-sm px-1 py-0.5 text-xs text-fg outline-none"
+                className="w-full bg-transparent text-sm text-base-content outline-none px-1"
                 autoFocus
               />
             ) : (
               <span
-                className={`text-xs block cursor-text leading-relaxed ${
-                  todo.done ? "line-through text-fg-muted" : "text-fg"
+                className={`text-sm block cursor-text leading-snug ${
+                  todo.done ? "line-through text-base-content/40" : "text-base-content"
                 }`}
               >
                 {todo.title || "untitled"}
@@ -93,30 +104,24 @@ export const TodoNode = memo(({ data }: NodeProps) => {
           </div>
         </div>
 
-        {childCount > 0 && (
-          <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-fg-muted">
-            <span className="bg-elevated px-1.5 py-0.5 rounded-sm leading-none">
-              {childCount} sub{childCount > 1 ? "s" : ""}
-            </span>
-            {maxDepth > 0 && (
-              <span className="bg-elevated px-1.5 py-0.5 rounded-sm leading-none">
-                depth {maxDepth + 1}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Bottom row — child count + add sub button */}
+        <div className="mt-2 flex items-center justify-between">
+          {childCount > 0 ? (
+            <span className="text-[10px] text-base-content/30">{childCount} sub</span>
+          ) : (
+            <span />
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddChild?.(todo.id); }}
+            className="btn btn-ghost btn-xs gap-1 text-primary/70 hover:text-primary p-0 h-6 min-h-0"
+          >
+            <Plus size={12} />
+            <span className="text-[10px]">sub</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 });
-
-function maxNestDepth(children: Todo[]): number {
-  let max = 0;
-  for (const c of children) {
-    const d = c.children ? 1 + maxNestDepth(c.children) : 0;
-    if (d > max) max = d;
-  }
-  return max;
-}
 
 TodoNode.displayName = "TodoNode";

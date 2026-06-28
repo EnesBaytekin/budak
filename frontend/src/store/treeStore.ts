@@ -15,21 +15,33 @@ function flatten(todos: Todo[]): { todo: Todo; parentId: string | null }[] {
   return result;
 }
 
+async function reloadTree(get: any, set: any) {
+  const treeID = get().selectedTreeID;
+  if (!treeID) return;
+  const res = await treesApi.getTree(treeID);
+  set({ todos: res.todos });
+}
+
 interface TreeState {
   trees: Tree[];
   selectedTreeID: string | null;
   todos: Todo[];
   isLoading: boolean;
+  editingTodoID: string | null;
+  activeTodoID: string | null;
+  setActiveTodoID: (id: string | null) => void;
   loadTrees: () => Promise<void>;
   selectTree: (id: string) => Promise<void>;
-  createTree: (title: string) => Promise<void>;
+  createTree: (title: string) => Promise<Tree>;
   deleteTree: (id: string) => Promise<void>;
-  createTodo: (title: string, parentID?: string | null) => Promise<void>;
+  createTodo: (title?: string, parentID?: string | null, beforeID?: string | null) => Promise<string | null>;
   toggleTodo: (todoID: string, done: boolean) => Promise<void>;
   updateTodoTitle: (todoID: string, title: string) => Promise<void>;
   deleteTodo: (todoID: string) => Promise<void>;
   indentTodo: (todoID: string) => Promise<void>;
   outdentTodo: (todoID: string) => Promise<void>;
+  moveTodoToParent: (todoID: string, newParentID: string | null) => Promise<void>;
+  setEditingTodoID: (id: string | null) => void;
 }
 
 export const useTreeStore = create<TreeState>((set, get) => ({
@@ -37,6 +49,10 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   selectedTreeID: null,
   todos: [],
   isLoading: false,
+  editingTodoID: null,
+  activeTodoID: null,
+
+  setActiveTodoID: (id) => set({ activeTodoID: id }),
 
   loadTrees: async () => {
     const trees = await treesApi.getTrees();
@@ -44,14 +60,15 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   },
 
   selectTree: async (id) => {
-    set({ selectedTreeID: id });
+    set({ selectedTreeID: id, editingTodoID: null, activeTodoID: null });
     const res = await treesApi.getTree(id);
     set({ todos: res.todos });
   },
 
   createTree: async (title) => {
-    await treesApi.createTree(title);
+    const tree = await treesApi.createTree(title);
     await get().loadTrees();
+    return tree;
   },
 
   deleteTree: async (id) => {
@@ -63,39 +80,27 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     await get().loadTrees();
   },
 
-  createTodo: async (title, parentID = null) => {
+  createTodo: async (title = "", parentID = null, beforeID?: string | null) => {
     const treeID = get().selectedTreeID;
-    if (!treeID) return;
-    await todosApi.createTodo(treeID, title, parentID);
-    const res = await treesApi.getTree(treeID);
-    set({ todos: res.todos });
+    if (!treeID) return null;
+    const todo = await todosApi.createTodo(treeID, title, parentID, beforeID);
+    await reloadTree(get, set);
+    return todo.id;
   },
 
   toggleTodo: async (todoID, done) => {
     await todosApi.updateTodo(todoID, { done });
-    const treeID = get().selectedTreeID;
-    if (treeID) {
-      const res = await treesApi.getTree(treeID);
-      set({ todos: res.todos });
-    }
+    await reloadTree(get, set);
   },
 
   updateTodoTitle: async (todoID, title) => {
     await todosApi.updateTodo(todoID, { title });
-    const treeID = get().selectedTreeID;
-    if (treeID) {
-      const res = await treesApi.getTree(treeID);
-      set({ todos: res.todos });
-    }
+    await reloadTree(get, set);
   },
 
   deleteTodo: async (todoID) => {
     await todosApi.deleteTodo(todoID);
-    const treeID = get().selectedTreeID;
-    if (treeID) {
-      const res = await treesApi.getTree(treeID);
-      set({ todos: res.todos });
-    }
+    await reloadTree(get, set);
   },
 
   indentTodo: async (todoID) => {
@@ -110,8 +115,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     if (sibIdx < 1) return;
     const newParentId = siblings[sibIdx - 1].todo.id;
     await todosApi.moveTodo(todoID, newParentId, 0);
-    const res = await treesApi.getTree(treeID);
-    set({ todos: res.todos });
+    await reloadTree(get, set);
   },
 
   outdentTodo: async (todoID) => {
@@ -123,7 +127,13 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     const parent = flat.find((f) => f.todo.id === item.parentId);
     const newParentId = parent?.parentId ?? null;
     await todosApi.moveTodo(todoID, newParentId, 0);
-    const res = await treesApi.getTree(treeID);
-    set({ todos: res.todos });
+    await reloadTree(get, set);
   },
+
+  moveTodoToParent: async (todoID, newParentID) => {
+    await todosApi.moveTodo(todoID, newParentID, 0);
+    await reloadTree(get, set);
+  },
+
+  setEditingTodoID: (id) => set({ editingTodoID: id }),
 }));

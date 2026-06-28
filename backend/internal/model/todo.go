@@ -35,6 +35,7 @@ type UpdateTreeRequest struct {
 type CreateTodoRequest struct {
 	ParentID *string `json:"parent_id"`
 	Title    string  `json:"title"`
+	BeforeID *string `json:"before_id,omitempty"`
 }
 
 type UpdateTodoRequest struct {

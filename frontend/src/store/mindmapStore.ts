@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import * as mindmapApi from "../api/mindmap";
-import type { MindMapPosition } from "../types";
+import type { MindMapPosition, Todo } from "../types";
 
 interface MindMapState {
   positions: Map<string, MindMapPosition>;
@@ -9,9 +9,21 @@ interface MindMapState {
   updatePosition: (todoID: string, treeID: string, x: number, y: number) => Promise<void>;
   batchSave: (treeID: string) => Promise<void>;
   getPosition: (todoID: string) => MindMapPosition | undefined;
-  getDefaultPosition: (todoID: string, index: number) => { x: number; y: number };
+  computePositions: (todos: Todo[]) => Map<string, { x: number; y: number }>;
   markDirty: (todoID: string, treeID: string, x: number, y: number) => void;
   dirtyNodes: Map<string, { todo_id: string; tree_id: string; x: number; y: number }>;
+}
+
+function flattenTree(todos: Todo[]): { todo: Todo }[] {
+  const result: { todo: Todo }[] = [];
+  const walk = (items: Todo[]) => {
+    for (const t of items) {
+      result.push({ todo: t });
+      if (t.children) walk(t.children);
+    }
+  };
+  walk(todos);
+  return result;
 }
 
 export const useMindmapStore = create<MindMapState>((set, get) => ({
@@ -47,14 +59,52 @@ export const useMindmapStore = create<MindMapState>((set, get) => ({
     return get().positions.get(todoID);
   },
 
-  getDefaultPosition: (todoID, index) => {
-    const existing = get().positions.get(todoID);
-    if (existing) return { x: existing.x, y: existing.y };
-    // Auto-layout in a grid pattern
-    const cols = 4;
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    return { x: col * 250 + 100, y: row * 150 + 50 };
+  computePositions: (todos) => {
+    const saved = get().positions;
+    const result = new Map<string, { x: number; y: number }>();
+
+    // First pass: use saved positions where available
+    const flat = flattenTree(todos);
+    for (const { todo } of flat) {
+      const s = saved.get(todo.id);
+      if (s) result.set(todo.id, { x: s.x, y: s.y });
+    }
+
+    // Second pass: compute positions for unsaved nodes
+    // Roots: compact horizontal row, Children: below parent
+    let rootCol = 0;
+    const rootSpacing = 260;
+
+    const compute = (items: Todo[], defaultParentX?: number, defaultParentY?: number) => {
+      let childOffset = 0;
+
+      for (const todo of items) {
+        if (result.has(todo.id)) {
+          const pos = result.get(todo.id)!;
+          if (todo.children) compute(todo.children, pos.x, pos.y);
+          continue;
+        }
+
+        let x: number, y: number;
+
+        if (defaultParentX !== undefined && defaultParentY !== undefined) {
+          x = defaultParentX + 60;
+          y = defaultParentY + 80 + childOffset * 50;
+          childOffset++;
+        } else {
+          x = rootCol * rootSpacing;
+          y = 0;
+          rootCol++;
+        }
+
+        result.set(todo.id, { x, y });
+        if (todo.children) compute(todo.children, x, y);
+      }
+    };
+
+    compute(todos, undefined, undefined);
+
+    return result;
   },
 
   markDirty: (todoID, treeID, x, y) => {

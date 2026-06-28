@@ -5,10 +5,10 @@ export function getTodos(treeID: string) {
   return apiRequest<Todo[]>(`/api/v1/trees/${treeID}/todos`);
 }
 
-export function createTodo(treeID: string, title: string, parentID: string | null = null) {
+export function createTodo(treeID: string, title: string, parentID: string | null = null, beforeID?: string | null) {
   return apiRequest<Todo>(`/api/v1/trees/${treeID}/todos`, {
     method: "POST",
-    body: { title, parent_id: parentID },
+    body: { title, parent_id: parentID, before_id: beforeID || undefined },
   });
 }
 

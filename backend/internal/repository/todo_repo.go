@@ -93,12 +93,34 @@ func (r *TodoRepo) DeleteTree(ctx context.Context, treeID string) error {
 
 // --- Todos ---
 
-func (r *TodoRepo) CreateTodo(ctx context.Context, treeID string, parentID *string, title string) (*model.Todo, error) {
+func (r *TodoRepo) CreateTodo(ctx context.Context, treeID string, parentID *string, title string, beforeID *string) (*model.Todo, error) {
+	var sortOrder int
+	effectiveParent := parentID
+
+	if beforeID != nil {
+		// Get the target todo's sort_order and parent_id
+		var targetSort int
+		var targetParent *string
+		err := r.pool.QueryRow(ctx,
+			`SELECT sort_order, parent_id FROM todos WHERE id = $1`, *beforeID,
+		).Scan(&targetSort, &targetParent)
+		if err == nil {
+			sortOrder = targetSort
+			effectiveParent = targetParent
+			// Shift siblings down
+			r.pool.Exec(ctx,
+				`UPDATE todos SET sort_order = sort_order + 1
+				 WHERE tree_id = $1 AND parent_id IS NOT DISTINCT FROM $2 AND sort_order >= $3`,
+				treeID, effectiveParent, sortOrder,
+			)
+		}
+	}
+
 	var t model.Todo
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO todos (tree_id, parent_id, title) VALUES ($1, $2, $3)
+		`INSERT INTO todos (tree_id, parent_id, title, sort_order) VALUES ($1, $2, $3, $4)
 		 RETURNING id, tree_id, parent_id, title, done, note, sort_order, created_at, updated_at`,
-		treeID, parentID, title,
+		treeID, effectiveParent, title, sortOrder,
 	).Scan(&t.ID, &t.TreeID, &t.ParentID, &t.Title, &t.Done, &t.Note, &t.SortOrder, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create todo: %w", err)
