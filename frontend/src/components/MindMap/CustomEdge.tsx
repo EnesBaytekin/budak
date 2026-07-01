@@ -1,4 +1,4 @@
-import { BaseEdge, getBezierPath, useStore, type EdgeProps } from "@xyflow/react";
+import { BaseEdge, getSmoothStepPath, useStore, type EdgeProps } from "@xyflow/react";
 
 export function CustomEdge(props: EdgeProps) {
   const { source, target, style } = props;
@@ -12,17 +12,17 @@ export function CustomEdge(props: EdgeProps) {
   const tx = targetNode.position.x + (targetNode.width ?? 160) / 2;
   const ty = targetNode.position.y + (targetNode.height ?? 80) / 2;
 
-  const [edgePath] = getBezierPath({
+  const [path] = getSmoothStepPath({
     sourceX: sx,
     sourceY: sy,
     targetX: tx,
     targetY: ty,
+    borderRadius: 16,
   });
 
   return (
     <>
-      <BaseEdge path={edgePath} style={style} />
-      {/* Only at target (child) center */}
+      <BaseEdge path={path} style={style} />
       <circle cx={tx} cy={ty} r={5} fill="var(--tudo-edge-circle)" />
     </>
   );

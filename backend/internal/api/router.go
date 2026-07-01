@@ -70,7 +70,10 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 		r.Put("/api/v1/todos/{todoID}", todoHandler.Update)
 		r.Delete("/api/v1/todos/{todoID}", todoHandler.Delete)
 		r.Patch("/api/v1/todos/{todoID}/move", todoHandler.Move)
+		r.Patch("/api/v1/todos/{todoID}/reorder-up", todoHandler.ReorderUp)
+		r.Patch("/api/v1/todos/{todoID}/reorder-down", todoHandler.ReorderDown)
 
+		r.Patch("/api/v1/todos/{todoID}/move-before", todoHandler.MoveBefore)
 		// Mindmap positions
 		r.Get("/api/v1/trees/{treeID}/positions", mindmapHandler.GetPositions)
 		r.Post("/api/v1/trees/{treeID}/positions", mindmapHandler.BatchUpsertPositions)

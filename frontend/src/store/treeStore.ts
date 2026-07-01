@@ -41,6 +41,9 @@ interface TreeState {
   indentTodo: (todoID: string) => Promise<void>;
   outdentTodo: (todoID: string) => Promise<void>;
   moveTodoToParent: (todoID: string, newParentID: string | null) => Promise<void>;
+  moveBefore: (todoID: string, beforeID: string) => Promise<void>;
+  moveUp: (todoID: string) => Promise<void>;
+  moveDown: (todoID: string) => Promise<void>;
   setEditingTodoID: (id: string | null) => void;
 }
 
@@ -132,6 +135,21 @@ export const useTreeStore = create<TreeState>((set, get) => ({
 
   moveTodoToParent: async (todoID, newParentID) => {
     await todosApi.moveTodo(todoID, newParentID, 0);
+    await reloadTree(get, set);
+  },
+
+  moveBefore: async (todoID, beforeID) => {
+    await todosApi.moveBefore(todoID, beforeID);
+    await reloadTree(get, set);
+  },
+
+  moveUp: async (todoID) => {
+    await todosApi.reorderUp(todoID);
+    await reloadTree(get, set);
+  },
+
+  moveDown: async (todoID) => {
+    await todosApi.reorderDown(todoID);
     await reloadTree(get, set);
   },
 

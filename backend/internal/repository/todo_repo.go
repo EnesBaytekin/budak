@@ -98,7 +98,6 @@ func (r *TodoRepo) CreateTodo(ctx context.Context, treeID string, parentID *stri
 	effectiveParent := parentID
 
 	if beforeID != nil {
-		// Get the target todo's sort_order and parent_id
 		var targetSort int
 		var targetParent *string
 		err := r.pool.QueryRow(ctx,
@@ -107,13 +106,18 @@ func (r *TodoRepo) CreateTodo(ctx context.Context, treeID string, parentID *stri
 		if err == nil {
 			sortOrder = targetSort
 			effectiveParent = targetParent
-			// Shift siblings down
 			r.pool.Exec(ctx,
 				`UPDATE todos SET sort_order = sort_order + 1
 				 WHERE tree_id = $1 AND parent_id IS NOT DISTINCT FROM $2 AND sort_order >= $3`,
 				treeID, effectiveParent, sortOrder,
 			)
 		}
+	} else {
+		r.pool.QueryRow(ctx,
+			`SELECT COALESCE(MAX(sort_order), -1) + 1 FROM todos
+			 WHERE tree_id = $1 AND parent_id IS NOT DISTINCT FROM $2`,
+			treeID, effectiveParent,
+		).Scan(&sortOrder)
 	}
 
 	var t model.Todo
@@ -198,7 +202,6 @@ func (r *TodoRepo) UpdateTodo(ctx context.Context, todoID string, req model.Upda
 }
 
 func (r *TodoRepo) DeleteTodo(ctx context.Context, todoID string) error {
-	// ON DELETE CASCADE handles children
 	_, err := r.pool.Exec(ctx, `DELETE FROM todos WHERE id = $1`, todoID)
 	return err
 }
@@ -207,6 +210,87 @@ func (r *TodoRepo) MoveTodo(ctx context.Context, todoID string, newParentID *str
 	_, err := r.pool.Exec(ctx,
 		`UPDATE todos SET parent_id = $1, sort_order = $2, updated_at = NOW() WHERE id = $3`,
 		newParentID, sortOrder, todoID,
+	)
+	return err
+}
+
+func (r *TodoRepo) MoveBefore(ctx context.Context, todoID, beforeID string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Get target's parent_id and sort_order
+	var targetParent *string
+	var targetSort int
+	err = tx.QueryRow(ctx,
+		`SELECT parent_id, sort_order FROM todos WHERE id = $1`, beforeID,
+	).Scan(&targetParent, &targetSort)
+	if err != nil {
+		return err
+	}
+
+	// Shift siblings forward
+	_, err = tx.Exec(ctx,
+		`UPDATE todos SET sort_order = sort_order + 1, updated_at = NOW()
+		 WHERE id != $1 AND parent_id IS NOT DISTINCT FROM $2 AND sort_order >= $3`,
+		todoID, targetParent, targetSort,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Move the todo before target
+	_, err = tx.Exec(ctx,
+		`UPDATE todos SET parent_id = $1, sort_order = $2, updated_at = NOW() WHERE id = $3`,
+		targetParent, targetSort, todoID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *TodoRepo) ReorderUp(ctx context.Context, todoID string) error {
+	_, err := r.pool.Exec(ctx,
+		`WITH sibling AS (
+			SELECT id, sort_order FROM todos
+			WHERE id != $1
+			  AND parent_id IS NOT DISTINCT FROM (SELECT parent_id FROM todos WHERE id = $1)
+			  AND sort_order < (SELECT sort_order FROM todos WHERE id = $1)
+			ORDER BY sort_order DESC LIMIT 1
+		)
+		UPDATE todos
+		SET sort_order = CASE
+			WHEN id = $1 THEN (SELECT sort_order FROM sibling)
+			ELSE (SELECT sort_order FROM todos WHERE id = $1)
+		END,
+		updated_at = NOW()
+		WHERE id IN ($1, (SELECT id FROM sibling))`,
+		todoID,
+	)
+	return err
+}
+
+func (r *TodoRepo) ReorderDown(ctx context.Context, todoID string) error {
+	_, err := r.pool.Exec(ctx,
+		`WITH sibling AS (
+			SELECT id, sort_order FROM todos
+			WHERE id != $1
+			  AND parent_id IS NOT DISTINCT FROM (SELECT parent_id FROM todos WHERE id = $1)
+			  AND sort_order > (SELECT sort_order FROM todos WHERE id = $1)
+			ORDER BY sort_order ASC LIMIT 1
+		)
+		UPDATE todos
+		SET sort_order = CASE
+			WHEN id = $1 THEN (SELECT sort_order FROM sibling)
+			ELSE (SELECT sort_order FROM todos WHERE id = $1)
+		END,
+		updated_at = NOW()
+		WHERE id IN ($1, (SELECT id FROM sibling))`,
+		todoID,
 	)
 	return err
 }
@@ -222,7 +306,7 @@ func BuildTree(todos []model.Todo) []*model.Todo {
 
 	for i := range todos {
 		todos[i].Children = []*model.Todo{}
-		nodeMap[todos[i].ID] = &todos[i] // pointer to the element in the slice
+		nodeMap[todos[i].ID] = &todos[i]
 	}
 
 	for i := range todos {
@@ -238,10 +322,8 @@ func BuildTree(todos []model.Todo) []*model.Todo {
 		}
 	}
 
-	// Sort children by sort_order
 	var sortChildren func(parent *model.Todo)
 	sortChildren = func(parent *model.Todo) {
-		// bubble sort by sort_order (simple for small lists)
 		for i := 0; i < len(parent.Children); i++ {
 			for j := i + 1; j < len(parent.Children); j++ {
 				if parent.Children[i].SortOrder > parent.Children[j].SortOrder {

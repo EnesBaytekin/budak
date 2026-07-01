@@ -34,3 +34,22 @@ export function moveTodo(todoID: string, newParentID: string | null, sortOrder: 
     body: { new_parent_id: newParentID, sort_order: sortOrder },
   });
 }
+
+export function moveBefore(todoID: string, beforeID: string) {
+  return apiRequest<{ status: string }>(`/api/v1/todos/${todoID}/move-before`, {
+    method: "PATCH",
+    body: { before_id: beforeID },
+  });
+}
+
+export function reorderUp(todoID: string) {
+  return apiRequest<{ status: string }>(`/api/v1/todos/${todoID}/reorder-up`, {
+    method: "PATCH",
+  });
+}
+
+export function reorderDown(todoID: string) {
+  return apiRequest<{ status: string }>(`/api/v1/todos/${todoID}/reorder-down`, {
+    method: "PATCH",
+  });
+}
