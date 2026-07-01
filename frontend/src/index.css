@@ -2,3 +2,34 @@
 @plugin "daisyui" {
   themes: cupcake, dim;
 }
+
+/* Custom CSS variable for mind map edges — high contrast in both themes */
+@layer base {
+  :root {
+    --tudo-edge: #57534e;
+    --tudo-edge-circle: #57534e;
+  }
+  [data-theme="dim"] {
+    --tudo-edge: #d1d5db;
+    --tudo-edge-circle: #d1d5db;
+  }
+}
+
+/* Mobile viewport fix: prevent zoom and ensure keyboard visibility */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari fix */
+  .h-dvh {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Smooth scrolling for the tree area */
+.tree-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent mobile text zoom on input focus */
+input, textarea {
+  font-size: 16px !important;
+}

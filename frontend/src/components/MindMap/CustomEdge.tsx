@@ -23,7 +23,7 @@ export function CustomEdge(props: EdgeProps) {
     <>
       <BaseEdge path={edgePath} style={style} />
       {/* Only at target (child) center */}
-      <circle cx={tx} cy={ty} r={4} fill="var(--color-base-300)" />
+      <circle cx={tx} cy={ty} r={5} fill="var(--tudo-edge-circle)" />
     </>
   );
 }

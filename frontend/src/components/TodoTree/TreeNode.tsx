@@ -102,31 +102,43 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
     if (id) setEditingTodoID(id);
   };
 
-  // HTML5 Drag & Drop for reordering
+  // Drag & Drop for reordering
+  const dragId = useRef<string | null>(null);
+
   const handleDragStart = (e: React.DragEvent) => {
+    dragId.current = todo.id;
     e.dataTransfer.setData("text/plain", todo.id);
     e.dataTransfer.effectAllowed = "move";
+    e.stopPropagation();
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    // Don't allow drop on self
+    if (dragId.current === todo.id) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    e.stopPropagation();
 
     const rect = rowRef.current?.getBoundingClientRect();
     if (!rect) return;
     const y = e.clientY - rect.top;
     const h = rect.height;
 
-    if (y < h * 0.25) setDragOver("before");
+    if (depth === 0 && y < h * 0.25) setDragOver("before");
     else if (y > h * 0.75) setDragOver("after");
     else setDragOver("child");
   };
 
-  const handleDragLeave = () => setDragOver(null);
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.stopPropagation();
+    setDragOver(null);
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(null);
+    dragId.current = null;
     const draggedId = e.dataTransfer.getData("text/plain");
     if (!draggedId || draggedId === todo.id) return;
 
@@ -134,9 +146,13 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
     if (position === "child") {
       moveTodoToParent(draggedId, todo.id);
     } else {
-      // before/after: move to same parent level
       moveTodoToParent(draggedId, todo.parent_id);
     }
+  };
+
+  const handleDragEnd = () => {
+    dragId.current = null;
+    setDragOver(null);
   };
 
   const isActive = activeTodoID === todo.id;
@@ -145,12 +161,18 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
     dragOver === "child" ? "bg-primary/10 rounded-xl" : "";
 
   return (
-    <div className="select-none" draggable onDragStart={handleDragStart}>
+    <div className="select-none">
       {/* Drop indicator above */}
       {dragOver === "before" && <div className="h-0.5 bg-primary mx-2 rounded-full" />}
 
       <div
         ref={rowRef}
+        draggable
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={`group flex items-center gap-2 px-2 py-2.5 rounded-xl transition cursor-pointer ${dropClass} ${
           isActive
             ? "bg-primary/5"
@@ -164,9 +186,6 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerMove={handlePointerMove}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
       >
         {/* Collapse */}
         {hasChildren ? (
