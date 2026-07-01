@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/imns/tudo-backend/internal/model"
-	"github.com/imns/tudo-backend/internal/service"
+	"github.com/enesbaytekin/budak/internal/model"
+	"github.com/enesbaytekin/budak/internal/service"
 )
 
 type MindMapHandler struct {

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/imns/tudo-backend/internal/model"
-	"github.com/imns/tudo-backend/internal/service"
+	"github.com/enesbaytekin/budak/internal/model"
+	"github.com/enesbaytekin/budak/internal/service"
 )
 
 type AuthHandler struct {

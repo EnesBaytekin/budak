@@ -1,4 +1,4 @@
-module github.com/imns/tudo-backend
+module github.com/enesbaytekin/budak
 
 go 1.24.10
 

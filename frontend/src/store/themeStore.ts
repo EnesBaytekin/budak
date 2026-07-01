@@ -10,14 +10,14 @@ interface ThemeState {
 
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "cupcake";
-  const stored = localStorage.getItem("tudo-theme");
+  const stored = localStorage.getItem("budak-theme");
   if (stored === "cupcake" || stored === "dim") return stored;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dim" : "cupcake";
 }
 
 function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem("tudo-theme", theme);
+  localStorage.setItem("budak-theme", theme);
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => {

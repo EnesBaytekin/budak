@@ -18,12 +18,12 @@ services:
       - frontend
     restart: unless-stopped
     networks:
-      - tudo-net
+      - budak-net
 
   backend:
-    image: imns/tudo-backend:${TUDO_VERSION:-latest}
+    image: imns/budak-backend:${BUDAK_VERSION:-latest}
     environment:
-      - DB_URL=postgres://${DB_USER:-tudo}:${DB_PASSWORD:-tudo}@db:5432/${DB_NAME:-tudo}
+      - DB_URL=postgres://${DB_USER:-budak}:${DB_PASSWORD:-budak}@db:5432/${DB_NAME:-budak}
       - JWT_SECRET=${JWT_SECRET}
       - REGISTRATION_OPEN=${REGISTRATION_OPEN:-false}
     depends_on:
@@ -31,34 +31,34 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - tudo-net
+      - budak-net
 
   frontend:
-    image: imns/tudo-frontend:${TUDO_VERSION:-latest}
+    image: imns/budak-frontend:${BUDAK_VERSION:-latest}
     restart: unless-stopped
     networks:
-      - tudo-net
+      - budak-net
 
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${DB_USER:-tudo}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-tudo}
-      POSTGRES_DB: ${DB_NAME:-tudo}
+      POSTGRES_USER: ${DB_USER:-budak}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-budak}
+      POSTGRES_DB: ${DB_NAME:-budak}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tudo}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-budak}"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
     networks:
-      - tudo-net
+      - budak-net
 
 volumes:
   pgdata:
   caddy_data:
 
 networks:
-  tudo-net:
+  budak-net:

@@ -66,7 +66,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-base-300">
           <div>
-            <h2 className="text-lg font-bold text-primary">tudo</h2>
+            <h2 className="text-lg font-bold text-primary">budak</h2>
             <p className="text-xs text-base-content/50 truncate mt-0.5">{user?.username}</p>
           </div>
           <button onClick={onToggle} className="btn btn-ghost btn-sm lg:hidden">

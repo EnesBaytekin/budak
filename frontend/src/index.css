@@ -6,12 +6,12 @@
 /* Custom CSS variable for mind map edges — visible but theme-harmonious */
 @layer base {
   :root {
-    --tudo-edge: #9ca3af;
-    --tudo-edge-circle: #9ca3af;
+    --budak-edge: #9ca3af;
+    --budak-edge-circle: #9ca3af;
   }
   [data-theme="dim"] {
-    --tudo-edge: #6b7280;
-    --tudo-edge-circle: #6b7280;
+    --budak-edge: #6b7280;
+    --budak-edge-circle: #6b7280;
   }
 }
 

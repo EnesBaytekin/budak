@@ -22,7 +22,7 @@ export function RegisterPage({ onSwitch }: { onSwitch: () => void }) {
     <div className="min-h-screen flex items-center justify-center bg-base-100 px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary">tudo</h1>
+          <h1 className="text-4xl font-bold text-primary">budak</h1>
           <p className="text-base-content/60 text-sm mt-1">create your account</p>
         </div>
 

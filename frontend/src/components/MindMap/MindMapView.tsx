@@ -92,8 +92,8 @@ export function MindMapView() {
               source: t.id,
               target: child.id,
               type: "custom",
-              style: { stroke: "var(--tudo-edge)", strokeWidth: 3 },
-              markerEnd: { type: MarkerType.ArrowClosed, color: "var(--tudo-edge)" },
+              style: { stroke: "var(--budak-edge)", strokeWidth: 3 },
+              markerEnd: { type: MarkerType.ArrowClosed, color: "var(--budak-edge)" },
             });
             addEdges([child]);
           }
@@ -207,14 +207,14 @@ export function MindMapView() {
         connectOnClick={false}
         nodesConnectable={false}
         defaultEdgeOptions={{
-          style: { stroke: "var(--tudo-edge)", strokeWidth: 3 },
+          style: { stroke: "var(--budak-edge)", strokeWidth: 3 },
           type: "custom",
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={25} size={1.5} color="var(--color-base-300)" />
         <Controls showInteractive={false} />
         <MiniMap
-          nodeStrokeColor="var(--tudo-edge)"
+          nodeStrokeColor="var(--budak-edge)"
           nodeColor={(n) => ((n.data as any)?.todo?.done ? "var(--color-success)" : "var(--color-base-300)")}
           maskColor="var(--color-base-100)"
           style={{ background: "var(--color-base-200)" }}

@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/imns/tudo-backend/internal/api"
-	"github.com/imns/tudo-backend/internal/db"
-	"github.com/imns/tudo-backend/internal/repository"
-	"github.com/imns/tudo-backend/internal/service"
+	"github.com/enesbaytekin/budak/internal/api"
+	"github.com/enesbaytekin/budak/internal/db"
+	"github.com/enesbaytekin/budak/internal/repository"
+	"github.com/enesbaytekin/budak/internal/service"
 )
 
 func main() {

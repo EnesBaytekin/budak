@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/imns/tudo-backend/internal/model"
+	"github.com/enesbaytekin/budak/internal/model"
 )
 
 type UserRepo struct {

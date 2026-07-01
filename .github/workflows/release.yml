@@ -6,8 +6,8 @@ on:
       - "v*"
 
 env:
-  REGISTRY_IMAGE_BACKEND: imns/tudo-backend
-  REGISTRY_IMAGE_FRONTEND: imns/tudo-frontend
+  REGISTRY_IMAGE_BACKEND: imns/budak-backend
+  REGISTRY_IMAGE_FRONTEND: imns/budak-frontend
 
 jobs:
   build:

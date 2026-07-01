@@ -1,5 +1,5 @@
-const TOKEN_KEY = "tudo_token";
-const REFRESH_KEY = "tudo_refresh";
+const TOKEN_KEY = "budak_token";
+const REFRESH_KEY = "budak_refresh";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 

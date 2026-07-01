@@ -1,4 +1,4 @@
-# Tudo
+# Budak
 
 A tree-based todo application with mind map visualization.
 
@@ -16,8 +16,8 @@ A tree-based todo application with mind map visualization.
 
 ```bash
 # Clone the repo
-git clone https://github.com/imns/tudo.git
-cd tudo
+git clone https://github.com/enesbaytekin/budak.git
+cd budak
 
 # Start all services
 docker compose -f docker-compose.dev.yml up -d
@@ -42,14 +42,14 @@ docker compose -f docker-compose.dev.yml up -d
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_USER` | `tudo` | Database user |
+| `DB_USER` | `budak` | Database user |
 | `DB_PASSWORD` | — | Database password (required) |
-| `DB_NAME` | `tudo` | Database name |
+| `DB_NAME` | `budak` | Database name |
 | `JWT_SECRET` | — | JWT signing secret (required) |
 | `REGISTRATION_OPEN` | `true` | Allow new user registration |
 | `DOMAIN` | `localhost` | Domain for Caddy/Let's Encrypt |
-| `TUDO_VERSION` | `latest` | Docker image tag |
-| `TUDO_CERTS_DIR` | `./certs` | Host path for TLS certificates |
+| `BUDAK_VERSION` | `latest` | Docker image tag |
+| `BUDAK_CERTS_DIR` | `./certs` | Host path for TLS certificates |
 
 ## Architecture
 
@@ -74,7 +74,7 @@ docker compose -f docker-compose.dev.yml up -d
 ```bash
 # Backend (standalone)
 cd backend
-DB_URL=postgres://tudo:tudo@localhost:5432/tudo go run ./cmd/tudo
+DB_URL=postgres://budak:budak@localhost:5432/budak go run ./cmd/budak
 
 # Frontend (standalone)
 cd frontend

@@ -4,7 +4,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      - DB_URL=postgres://tudo:tudo@db:5432/tudo
+      - DB_URL=postgres://budak:budak@db:5432/budak
       - JWT_SECRET=dev-secret-change-in-production
       - REGISTRATION_OPEN=true
       - MIGRATIONS_DIR=/app/internal/db/migrations
@@ -28,14 +28,14 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: tudo
-      POSTGRES_PASSWORD: tudo
-      POSTGRES_DB: tudo
+      POSTGRES_USER: budak
+      POSTGRES_PASSWORD: budak
+      POSTGRES_DB: budak
     volumes:
       - pgdata:/var/lib/postgresql/data
     # No host port needed — services communicate via internal network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tudo"]
+      test: ["CMD-SHELL", "pg_isready -U budak"]
       interval: 5s
       timeout: 5s
       retries: 5

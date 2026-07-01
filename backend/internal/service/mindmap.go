@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"github.com/imns/tudo-backend/internal/model"
-	"github.com/imns/tudo-backend/internal/repository"
+	"github.com/enesbaytekin/budak/internal/model"
+	"github.com/enesbaytekin/budak/internal/repository"
 )
 
 type MindMapService struct {

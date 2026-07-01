@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/imns/tudo-backend/internal/service"
+	"github.com/enesbaytekin/budak/internal/service"
 )
 
 type contextKey string

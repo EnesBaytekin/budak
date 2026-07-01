@@ -8,8 +8,8 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	"github.com/imns/tudo-backend/internal/repository"
-	"github.com/imns/tudo-backend/internal/service"
+	"github.com/enesbaytekin/budak/internal/repository"
+	"github.com/enesbaytekin/budak/internal/service"
 )
 
 func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRepo, authService *service.AuthService) http.Handler {

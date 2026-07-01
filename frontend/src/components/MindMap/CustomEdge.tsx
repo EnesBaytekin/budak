@@ -32,9 +32,9 @@ export function CustomEdge(props: EdgeProps) {
           x1={sx} y1={sy}
           x2={tx} y2={ty}
         >
-          <stop offset="0%" stopColor="var(--tudo-edge)" stopOpacity="0.25" />
-          <stop offset="60%" stopColor="var(--tudo-edge)" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="var(--tudo-edge)" stopOpacity="1" />
+          <stop offset="0%" stopColor="var(--budak-edge)" stopOpacity="0.25" />
+          <stop offset="60%" stopColor="var(--budak-edge)" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="var(--budak-edge)" stopOpacity="1" />
         </linearGradient>
       </defs>
       <BaseEdge path={edgePath} style={{ ...style, stroke: `url(#${gradId})`, strokeWidth: 3 }} />

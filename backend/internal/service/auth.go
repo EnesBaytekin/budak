@@ -10,8 +10,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/imns/tudo-backend/internal/model"
-	"github.com/imns/tudo-backend/internal/repository"
+	"github.com/enesbaytekin/budak/internal/model"
+	"github.com/enesbaytekin/budak/internal/repository"
 )
 
 type AuthService struct {

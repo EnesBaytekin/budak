@@ -4,14 +4,14 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /tudo ./cmd/tudo
+RUN CGO_ENABLED=0 GOOS=linux go build -o /budak ./cmd/budak
 
 # Run stage
 FROM alpine:3.20
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
-COPY --from=builder /tudo .
+COPY --from=builder /budak .
 COPY internal/db/migrations ./internal/db/migrations
 
 EXPOSE 8080
-CMD ["./tudo"]
+CMD ["./budak"]
