@@ -1,7 +1,7 @@
 import { memo, useState, useCallback, useEffect, useRef } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { Todo } from "../../types";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, Link2, Trash2 } from "lucide-react";
 import { useTreeStore } from "../../store/treeStore";
 
 type TodoNodeData = {
@@ -9,13 +9,16 @@ type TodoNodeData = {
   onToggle?: (id: string, done: boolean) => void;
   onTitleChange?: (id: string, title: string) => void;
   onAddChild?: (parentId: string) => void;
+  onConnectStart?: (nodeId: string) => void;
+  onDelete?: (id: string) => void;
 };
 
 export const TodoNode = memo(({ data }: NodeProps) => {
-  const { todo, onToggle, onTitleChange, onAddChild } = data as TodoNodeData;
+  const { todo, onToggle, onTitleChange, onAddChild, onConnectStart, onDelete } = data as TodoNodeData;
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const inputRef = useRef<HTMLInputElement>(null);
+
   const editingTodoID = useTreeStore((s) => s.editingTodoID);
   const setEditingTodoID = useTreeStore((s) => s.setEditingTodoID);
 
@@ -45,7 +48,8 @@ export const TodoNode = memo(({ data }: NodeProps) => {
   const childCount = todo.children?.length ?? 0;
 
   return (
-    <div onDoubleClick={handleDoubleClick}
+    <div
+      onDoubleClick={handleDoubleClick}
       className={`rounded-xl border-2 shadow-md transition-all min-w-[150px] max-w-[230px] ${
         todo.done ? "bg-success/5 border-success/20" : "bg-base-100 border-base-300 hover:border-primary/40"
       }`}
@@ -73,12 +77,27 @@ export const TodoNode = memo(({ data }: NodeProps) => {
             )}
           </div>
         </div>
+
+        {/* Bottom row */}
         <div className="mt-2 flex items-center justify-between">
-          {childCount > 0 ? <span className="text-[10px] text-base-content/30">{childCount} sub</span> : <span />}
-          <button onClick={(e) => { e.stopPropagation(); onAddChild?.(todo.id); }}
-            className="btn btn-ghost btn-xs gap-1 text-primary/70 hover:text-primary p-0 h-6 min-h-0">
-            <Plus size={12} /><span className="text-[10px]">sub</span>
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Connect button — always visible */}
+            <button onClick={(e) => { e.stopPropagation(); onConnectStart?.(todo.id); }}
+              className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-secondary" title="Connect: make this node a parent">
+              <Link2 size={11} />
+            </button>
+            {(childCount > 0) ? <span className="text-[10px] text-base-content/30 ml-1">{childCount} sub</span> : null}
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={(e) => { e.stopPropagation(); onAddChild?.(todo.id); }}
+              className="btn btn-ghost btn-xs text-primary p-0 w-5 h-5 min-h-0" title="Add child">
+              <Plus size={12} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete?")) onDelete?.(todo.id); }}
+              className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/30 hover:text-error" title="Delete">
+              <Trash2 size={10} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
