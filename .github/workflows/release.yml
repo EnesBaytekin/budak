@@ -65,70 +65,26 @@ jobs:
         run: |
           sed "s|\${BUDAK_VERSION:-latest}|${{ steps.meta.outputs.version }}|g" \
             release/docker-compose.yml > release/docker-compose.versioned.yml
-          # Also pin the image tags directly as fallback
-          sed -i "s|\${BUDAK_VERSION:-${{ steps.meta.outputs.version }} }|\${{ steps.meta.outputs.version }}|g" \
-            release/docker-compose.versioned.yml 2>/dev/null || true
 
       - name: Generate release body
         run: |
-          VERSION="${{ steps.meta.outputs.version }}"
-          VSLUG="${{ steps.meta.outputs.version_slug }}"
-          cat > .github/release-body.md << BODY
-## Budak ${VSLUG}
+          V="${{ steps.meta.outputs.version }}"
+          VS="${{ steps.meta.outputs.version_slug }}"
 
-### 🚀 Deployment
-
-#### 1. Create .env file
-\`\`\`bash
-cp .env.example .env
-\`\`\`
-
-#### 2. Generate secrets (one-time)
-\`\`\`bash
-# Generate a strong random JWT secret
-sed -i "s/JWT_SECRET=.*/JWT_SECRET=\$(openssl rand -base64 32)/" .env
-
-# Generate a random database password
-sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=\$(openssl rand -base64 16 | tr -dc a-zA-Z0-9)/" .env
-
-# Set your domain
-# sed -i "s/DOMAIN=.*/DOMAIN=budak.yourdomain.com/" .env
-\`\`\`
-
-#### 3. Start the services
-\`\`\`bash
-# Pull images and start
-docker compose pull
-docker compose up -d
-
-# Check logs
-docker compose logs -f
-\`\`\`
-
-#### 4. First-time setup
-1. Go to \`https://yourdomain.com\` (or \`http://localhost:5173\` for testing)
-2. **Register** your admin account
-3. Set \`REGISTRATION_OPEN=false\` in .env to disable further registrations
-4. Restart: \`docker compose up -d\`
-
-### 📦 Docker Images
-- \`enesbaytekin/budak-backend:${VERSION}\`
-- \`enesbaytekin/budak-frontend:${VERSION}\`
-
-### 📋 Environment Variables
-| Variable | Default | Required | Description |
-|----------|---------|----------|-------------|
-| \`BUDAK_VERSION\` | \`${VERSION}\` | no | Docker image tag |
-| \`DB_USER\` | \`budak\` | no | PostgreSQL user |
-| \`DB_PASSWORD\` | — | **yes** | PostgreSQL password |
-| \`DB_NAME\` | \`budak\` | no | Database name |
-| \`JWT_SECRET\` | — | **yes** | Auth signing key |
-| \`REGISTRATION_OPEN\` | \`true\` | no | Allow new users |
-| \`DOMAIN\` | \`localhost\` | no | Domain for Caddy/HTTPS |
-| \`TLS_CERT_PATH\` | — | no | Manual SSL cert path |
-| \`TLS_KEY_PATH\` | — | no | Manual SSL key path |
-| \`BUDAK_CERTS_DIR\` | \`./certs\` | no | Host certs directory |
-BODY
+          echo "## Budak ${VS}" >> .github/release-body.md
+          echo "" >> .github/release-body.md
+          echo "### Deploy" >> .github/release-body.md
+          echo "" >> .github/release-body.md
+          echo '1. `cp .env.example .env`' >> .github/release-body.md
+          echo '2. `sed -i "s/JWT_SECRET=.*/JWT_SECRET=$(openssl rand -base64 32)/" .env`' >> .github/release-body.md
+          echo '3. `sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$(openssl rand -base64 16 | tr -dc a-zA-Z0-9)/" .env`' >> .github/release-body.md
+          echo "4. Edit \`.env\` and set your \`DOMAIN\`" >> .github/release-body.md
+          echo '5. `docker compose pull && docker compose up -d`' >> .github/release-body.md
+          echo "6. Open the site, register your admin account, set \`REGISTRATION_OPEN=false\`, restart" >> .github/release-body.md
+          echo "" >> .github/release-body.md
+          echo "### Images" >> .github/release-body.md
+          echo "- \`enesbaytekin/budak-backend:${V}\`" >> .github/release-body.md
+          echo "- \`enesbaytekin/budak-frontend:${V}\`" >> .github/release-body.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
