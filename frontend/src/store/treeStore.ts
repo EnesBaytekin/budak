@@ -30,6 +30,8 @@ interface TreeState {
   editingTodoID: string | null;
   activeTodoID: string | null;
   setActiveTodoID: (id: string | null) => void;
+  selectNextTodo: () => void;
+  selectPrevTodo: () => void;
   loadTrees: () => Promise<void>;
   selectTree: (id: string) => Promise<void>;
   createTree: (title: string) => Promise<Tree>;
@@ -160,4 +162,22 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   },
 
   setEditingTodoID: (id) => set({ editingTodoID: id }),
+
+  selectNextTodo: () => {
+    const { todos, activeTodoID } = get();
+    const flat = flatten(todos);
+    if (flat.length === 0) return;
+    if (!activeTodoID) { set({ activeTodoID: flat[0].todo.id }); return; }
+    const idx = flat.findIndex((f) => f.todo.id === activeTodoID);
+    if (idx < flat.length - 1) set({ activeTodoID: flat[idx + 1].todo.id });
+  },
+
+  selectPrevTodo: () => {
+    const { todos, activeTodoID } = get();
+    const flat = flatten(todos);
+    if (flat.length === 0) return;
+    if (!activeTodoID) { set({ activeTodoID: flat[0].todo.id }); return; }
+    const idx = flat.findIndex((f) => f.todo.id === activeTodoID);
+    if (idx > 0) set({ activeTodoID: flat[idx - 1].todo.id });
+  },
 }));

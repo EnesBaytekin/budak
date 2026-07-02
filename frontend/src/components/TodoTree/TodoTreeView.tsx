@@ -13,15 +13,42 @@ export function TodoTreeView() {
     if (id) setEdit(id);
   }, []);
 
-  // Global Enter → new todo
+  // Global keyboard handler
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey) return;
       const t = e.target as HTMLElement;
-      if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "BUTTON") return;
-      e.preventDefault();
-      addRootTodo();
+      const isInput = t.tagName === "INPUT" || t.tagName === "TEXTAREA";
+
+      // Enter → new root todo
+      if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (isInput || t.tagName === "BUTTON") return;
+        e.preventDefault();
+        addRootTodo();
+        return;
+      }
+
+      // The rest only applies outside inputs
+      if (isInput) return;
+
+      const { activeTodoID, indentTodo, outdentTodo, selectNextTodo, selectPrevTodo } = useTreeStore.getState();
+
+      // Tab/Shift+Tab → indent/outdent
+      if (e.key === "Tab") {
+        e.preventDefault();
+        if (activeTodoID) {
+          if (e.shiftKey) outdentTodo(activeTodoID);
+          else indentTodo(activeTodoID);
+        }
+        return;
+      }
+
+      // Arrow keys → navigate
+      if (e.key === "ArrowDown") { e.preventDefault(); selectNextTodo(); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); selectPrevTodo(); return; }
+
+      // Enter on an input is handled by the component itself
     };
+
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [addRootTodo]);
