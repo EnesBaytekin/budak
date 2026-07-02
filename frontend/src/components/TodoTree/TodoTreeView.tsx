@@ -7,10 +7,9 @@ export function TodoTreeView() {
   const todos = useTreeStore((s) => s.todos);
 
   const addRootTodo = useCallback(async () => {
-    const createTodo = useTreeStore.getState().createTodo;
-    const setEdit = useTreeStore.getState().setEditingTodoID;
+    const { createTodo, setEditingTodoID, setActiveTodoID } = useTreeStore.getState();
     const id = await createTodo("", null);
-    if (id) setEdit(id);
+    if (id) { setEditingTodoID(id); setActiveTodoID(id); }
   }, []);
 
   // Global keyboard handler
@@ -18,6 +17,16 @@ export function TodoTreeView() {
     const handler = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       const isInput = t.tagName === "INPUT" || t.tagName === "TEXTAREA";
+
+      // Shift+Enter → new child of active todo
+      if (e.key === "Enter" && e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (isInput || t.tagName === "BUTTON") return;
+        e.preventDefault();
+        const { activeTodoID, createTodo, setEditingTodoID } = useTreeStore.getState();
+        const pid = activeTodoID || null;
+        createTodo("", pid).then((id) => { if (id) { setEditingTodoID(id); useTreeStore.getState().setActiveTodoID(id); } });
+        return;
+      }
 
       // Enter → new root todo
       if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -32,19 +41,36 @@ export function TodoTreeView() {
 
       const { activeTodoID, indentTodo, outdentTodo, selectNextTodo, selectPrevTodo } = useTreeStore.getState();
 
-      // Tab/Shift+Tab → indent/outdent
-      if (e.key === "Tab") {
+      // Tab vs Shift+Tab → indent/outdent
+      if (e.key === "Tab" && !e.shiftKey) {
         e.preventDefault();
-        if (activeTodoID) {
-          if (e.shiftKey) outdentTodo(activeTodoID);
-          else indentTodo(activeTodoID);
-        }
+        if (activeTodoID) indentTodo(activeTodoID);
+        return;
+      }
+      if (e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        if (activeTodoID) outdentTodo(activeTodoID);
+        return;
+      }
+      // Shift+Right / Shift+Left → same as Tab/Shift+Tab
+      if (e.key === "ArrowRight" && e.shiftKey) {
+        e.preventDefault();
+        if (activeTodoID) indentTodo(activeTodoID);
+        return;
+      }
+      if (e.key === "ArrowLeft" && e.shiftKey) {
+        e.preventDefault();
+        if (activeTodoID) outdentTodo(activeTodoID);
         return;
       }
 
-      // Arrow keys → navigate
-      if (e.key === "ArrowDown") { e.preventDefault(); selectNextTodo(); return; }
-      if (e.key === "ArrowUp") { e.preventDefault(); selectPrevTodo(); return; }
+      // Arrow keys → navigate (without shift)
+      if (e.key === "ArrowDown" && !e.shiftKey) { e.preventDefault(); selectNextTodo(); return; }
+      if (e.key === "ArrowUp" && !e.shiftKey) { e.preventDefault(); selectPrevTodo(); return; }
+
+      // Shift+Up / Shift+Down → reorder
+      if (e.key === "ArrowDown" && e.shiftKey) { e.preventDefault(); if (activeTodoID) useTreeStore.getState().moveDown(activeTodoID); return; }
+      if (e.key === "ArrowUp" && e.shiftKey) { e.preventDefault(); if (activeTodoID) useTreeStore.getState().moveUp(activeTodoID); return; }
 
       // Enter on an input is handled by the component itself
     };
