@@ -33,11 +33,14 @@ docker compose -f docker-compose.dev.yml up -d
 # 1. Copy the example env file
 cp release/.env.example .env
 
-# 2. Edit .env with your domain and secrets
+# 2. Copy the Caddyfile (required for reverse proxy)
+cp release/Caddyfile .
+
+# 3. Edit .env with your domain and secrets
 #    (DOMAIN, JWT_SECRET, DB_PASSWORD are required)
 vim .env
 
-# 3. Start all services
+# 4. Start all services
 docker compose up -d
 ```
 

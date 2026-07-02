@@ -68,6 +68,9 @@ jobs:
           sed "s|\${BUDAK_VERSION:-latest}|${{ steps.meta.outputs.version }}|g" \
             release/docker-compose.yml > release/docker-compose.versioned.yml
 
+      - name: Copy Caddyfile for release
+        run: cp Caddyfile release/Caddyfile
+
       - name: Generate release body
         run: |
           V="${{ steps.meta.outputs.version }}"
@@ -77,12 +80,16 @@ jobs:
           echo "" >> .github/release-body.md
           echo "### Deploy" >> .github/release-body.md
           echo "" >> .github/release-body.md
+          echo "Download \`release/docker-compose.yml\`, \`release/Caddyfile\`, and \`release/.env.example\` to a directory." >> .github/release-body.md
+          echo "" >> .github/release-body.md
           echo '1. `cp .env.example .env`' >> .github/release-body.md
           echo '2. `sed -i "s/JWT_SECRET=.*/JWT_SECRET=$(openssl rand -base64 32)/" .env`' >> .github/release-body.md
           echo '3. `sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$(openssl rand -base64 16 | tr -dc a-zA-Z0-9)/" .env`' >> .github/release-body.md
           echo "4. Edit \`.env\` and set your \`DOMAIN\`" >> .github/release-body.md
           echo '5. `docker compose pull && docker compose up -d`' >> .github/release-body.md
           echo "6. Open the site, register your admin account, set \`REGISTRATION_OPEN=false\`, restart" >> .github/release-body.md
+          echo "" >> .github/release-body.md
+          echo "> 💡 Also works on ARM (Raspberry Pi, etc.) — images are built for both amd64 and arm64." >> .github/release-body.md
           echo "" >> .github/release-body.md
           echo "### Images" >> .github/release-body.md
           echo "- \`enesbaytekin/budak-backend:${V}\`" >> .github/release-body.md
@@ -97,4 +104,5 @@ jobs:
           files: |
             release/docker-compose.yml
             release/docker-compose.versioned.yml
+            release/Caddyfile
             release/.env.example
