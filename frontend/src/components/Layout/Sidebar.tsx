@@ -19,6 +19,14 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
     loadTrees();
   }, [loadTrees]);
 
+  // Auto-select first tree when trees load
+  const autoInit = useRef(false);
+  useEffect(() => {
+    if (autoInit.current || selectedTreeID || trees.length === 0) return;
+    autoInit.current = true;
+    selectTree(trees[0].id).then(() => loadPositions(trees[0].id));
+  }, [trees, selectedTreeID, selectTree, loadPositions]);
+
   const handleSelect = async (id: string) => {
     await selectTree(id);
     await loadPositions(id);

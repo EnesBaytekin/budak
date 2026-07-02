@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { getToken, setToken, setRefreshToken, clearTokens } from "../api/client";
 import * as authApi from "../api/auth";
+import * as treesApi from "../api/trees";
 import type { User } from "../types";
 
 interface AuthState {
@@ -38,6 +39,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     const res = await authApi.register(username, email, password);
     setToken(res.token);
     setRefreshToken(res.refresh_token);
+    // Auto-create a starter tree BEFORE setting authenticated
+    try {
+      await treesApi.createTree("My First Tree");
+    } catch {
+      // tree might already exist, ignore
+    }
     set({
       user: res.user,
       token: res.token,

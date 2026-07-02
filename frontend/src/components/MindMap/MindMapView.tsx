@@ -29,6 +29,7 @@ export function MindMapView() {
   const updateTodoTitle = useTreeStore((s) => s.updateTodoTitle);
   const createTodo = useTreeStore((s) => s.createTodo);
   const moveTodoToParent = useTreeStore((s) => s.moveTodoToParent);
+  const disconnectTodo = useTreeStore((s) => s.disconnectTodo);
   const deleteTodo = useTreeStore((s) => s.deleteTodo);
   const setEditingTodoID = useTreeStore((s) => s.setEditingTodoID);
   const selectedTreeID = useTreeStore((s) => s.selectedTreeID);
@@ -44,6 +45,9 @@ export function MindMapView() {
   // Connection mode
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [connectMouse, setConnectMouse] = useState<{ x: number; y: number } | null>(null);
+
+  // Context menu
+  const [ctxMenu, setCtxMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
 
   // Build nodes/edges
   useEffect(() => {
@@ -149,12 +153,27 @@ export function MindMapView() {
     setConnectMouse(null);
   }, [connectingFrom, selectedTreeID, edges, moveTodoToParent]);
 
-  // Click pane → cancel connection
+  // Click pane → cancel connection / dismiss context menu
   const onPaneClickConn = useCallback(() => {
+    setCtxMenu(null);
     if (connectingFrom) { setConnectingFrom(null); setConnectMouse(null); }
   }, [connectingFrom]);
 
   const handleAddRoot = async () => { const id = await createTodo("", null); if (id) setEditingTodoID(id); };
+
+  // Context menu
+  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setCtxMenu({ nodeId: node.id, x: event.clientX, y: event.clientY });
+  }, []);
+
+  // Close context menu on any click
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    window.addEventListener("click", close, { once: true });
+    return () => window.removeEventListener("click", close);
+  }, [ctxMenu]);
 
   // Preview line data (flow coordinates)
   const connLineData = connectingFrom && connectMouse ? (() => {
@@ -186,6 +205,7 @@ export function MindMapView() {
         onNodeDragStop={onNodeDragStop}
         onPaneClick={connectingFrom ? onPaneClickConn : onPaneClick}
         onNodeClick={connectingFrom ? onNodeClick : undefined}
+        onNodeContextMenu={onNodeContextMenu}
         onInit={setRfInstance}
         zoomOnDoubleClick={false}
         nodeDragThreshold={8}
@@ -229,6 +249,24 @@ export function MindMapView() {
         <div className="fixed bottom-16 right-6 z-10 bg-base-100 border border-base-300 rounded-lg px-3 py-1.5 text-xs text-base-content/60 shadow-lg flex items-center gap-2">
           click a node to make it child
           <button onClick={() => { setConnectingFrom(null); setConnectMouse(null); }} className="btn btn-ghost btn-xs p-0 w-4 h-4"><X size={12} /></button>
+        </div>
+      )}
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div className="fixed z-50 bg-base-100 border border-base-300 rounded-xl shadow-xl py-1 min-w-[180px]"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+          <button
+            onClick={() => { disconnectTodo(ctxMenu.nodeId); setCtxMenu(null); }}
+            className="w-full text-left px-4 py-2 text-sm text-base-content/70 hover:bg-base-300 transition">
+            Disconnect from parent
+          </button>
+          <div className="border-t border-base-300 my-1" />
+          <button
+            onClick={() => { if (confirm("Delete?")) deleteTodo(ctxMenu.nodeId); setCtxMenu(null); }}
+            className="w-full text-left px-4 py-2 text-sm text-error/80 hover:bg-base-300 transition">
+            Delete
+          </button>
         </div>
       )}
     </div>
