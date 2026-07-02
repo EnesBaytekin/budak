@@ -1,4 +1,4 @@
-# Tudo — Production Docker Compose
+# Budak — Production Docker Compose
 # This file is included in GitHub releases.
 # Copy .env.example to .env and fill in your settings.
 # Then run: docker compose up -d
@@ -11,7 +11,7 @@ services:
       - "80:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ${TUDO_CERTS_DIR:-./certs}:/certs:ro
+      - ${BUDAK_CERTS_DIR:-./certs}:/certs:ro
       - caddy_data:/data
     depends_on:
       - backend
@@ -21,7 +21,7 @@ services:
       - budak-net
 
   backend:
-    image: imns/budak-backend:${BUDAK_VERSION:-latest}
+    image: enesbaytekin/budak-backend:${BUDAK_VERSION:-latest}
     environment:
       - DB_URL=postgres://${DB_USER:-budak}:${DB_PASSWORD:-budak}@db:5432/${DB_NAME:-budak}
       - JWT_SECRET=${JWT_SECRET}
@@ -34,7 +34,7 @@ services:
       - budak-net
 
   frontend:
-    image: imns/budak-frontend:${BUDAK_VERSION:-latest}
+    image: enesbaytekin/budak-frontend:${BUDAK_VERSION:-latest}
     restart: unless-stopped
     networks:
       - budak-net

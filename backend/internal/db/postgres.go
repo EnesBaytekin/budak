@@ -11,7 +11,7 @@ import (
 func Connect(ctx context.Context) (*pgxpool.Pool, error) {
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
-		dbURL = "postgres://tudo:tudo@localhost:5432/tudo"
+		dbURL = "postgres://budak:budak@localhost:5432/budak"
 	}
 
 	config, err := pgxpool.ParseConfig(dbURL)

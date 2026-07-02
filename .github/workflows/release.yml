@@ -6,15 +6,14 @@ on:
       - "v*"
 
 env:
-  REGISTRY_IMAGE_BACKEND: imns/budak-backend
-  REGISTRY_IMAGE_FRONTEND: imns/budak-frontend
+  IMAGE_BACKEND: enesbaytekin/budak-backend
+  IMAGE_FRONTEND: enesbaytekin/budak-frontend
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
 
     steps:
       - name: Checkout
@@ -32,11 +31,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract version
         id: meta
         run: |
-          echo "version=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
-          echo "version_slug=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+          VERSION="${GITHUB_REF_NAME}"
+          VERSION_SLUG="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_slug=$VERSION_SLUG" >> $GITHUB_OUTPUT
 
       - name: Build and push backend
         uses: docker/build-push-action@v6
@@ -44,8 +45,8 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ${{ env.REGISTRY_IMAGE_BACKEND }}:${{ steps.meta.outputs.version }}
-            ${{ env.REGISTRY_IMAGE_BACKEND }}:latest
+            ${{ env.IMAGE_BACKEND }}:${{ steps.meta.outputs.version }}
+            ${{ env.IMAGE_BACKEND }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -55,16 +56,87 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            ${{ env.REGISTRY_IMAGE_FRONTEND }}:${{ steps.meta.outputs.version }}
-            ${{ env.REGISTRY_IMAGE_FRONTEND }}:latest
+            ${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.version }}
+            ${{ env.IMAGE_FRONTEND }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Generate version-pinned compose file
+        run: |
+          sed "s|\${BUDAK_VERSION:-latest}|${{ steps.meta.outputs.version }}|g" \
+            release/docker-compose.yml > release/docker-compose.versioned.yml
+          # Also pin the image tags directly as fallback
+          sed -i "s|\${BUDAK_VERSION:-${{ steps.meta.outputs.version }} }|\${{ steps.meta.outputs.version }}|g" \
+            release/docker-compose.versioned.yml 2>/dev/null || true
+
+      - name: Generate release body
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          VSLUG="${{ steps.meta.outputs.version_slug }}"
+          cat > .github/release-body.md << BODY
+## Budak ${VSLUG}
+
+### 🚀 Deployment
+
+#### 1. Create .env file
+\`\`\`bash
+cp .env.example .env
+\`\`\`
+
+#### 2. Generate secrets (one-time)
+\`\`\`bash
+# Generate a strong random JWT secret
+sed -i "s/JWT_SECRET=.*/JWT_SECRET=\$(openssl rand -base64 32)/" .env
+
+# Generate a random database password
+sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=\$(openssl rand -base64 16 | tr -dc a-zA-Z0-9)/" .env
+
+# Set your domain
+# sed -i "s/DOMAIN=.*/DOMAIN=budak.yourdomain.com/" .env
+\`\`\`
+
+#### 3. Start the services
+\`\`\`bash
+# Pull images and start
+docker compose pull
+docker compose up -d
+
+# Check logs
+docker compose logs -f
+\`\`\`
+
+#### 4. First-time setup
+1. Go to \`https://yourdomain.com\` (or \`http://localhost:5173\` for testing)
+2. **Register** your admin account
+3. Set \`REGISTRATION_OPEN=false\` in .env to disable further registrations
+4. Restart: \`docker compose up -d\`
+
+### 📦 Docker Images
+- \`enesbaytekin/budak-backend:${VERSION}\`
+- \`enesbaytekin/budak-frontend:${VERSION}\`
+
+### 📋 Environment Variables
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| \`BUDAK_VERSION\` | \`${VERSION}\` | no | Docker image tag |
+| \`DB_USER\` | \`budak\` | no | PostgreSQL user |
+| \`DB_PASSWORD\` | — | **yes** | PostgreSQL password |
+| \`DB_NAME\` | \`budak\` | no | Database name |
+| \`JWT_SECRET\` | — | **yes** | Auth signing key |
+| \`REGISTRATION_OPEN\` | \`true\` | no | Allow new users |
+| \`DOMAIN\` | \`localhost\` | no | Domain for Caddy/HTTPS |
+| \`TLS_CERT_PATH\` | — | no | Manual SSL cert path |
+| \`TLS_KEY_PATH\` | — | no | Manual SSL key path |
+| \`BUDAK_CERTS_DIR\` | \`./certs\` | no | Host certs directory |
+BODY
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ steps.meta.outputs.version }}
-          generate_release_notes: true
+          name: Budak ${{ steps.meta.outputs.version_slug }}
+          body_path: .github/release-body.md
+          fail_on_unmatched_files: false
           files: |
             release/docker-compose.yml
+            release/docker-compose.versioned.yml
             release/.env.example

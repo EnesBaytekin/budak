@@ -1,4 +1,4 @@
-# Tudo Caddyfile
+# Budak Caddyfile
 # If you have your own certificates, place them in the certs/ directory
 # and set TLS_CERT_PATH and TLS_KEY_PATH environment variables.
 # Otherwise, Caddy will use Let's Encrypt automatically.
