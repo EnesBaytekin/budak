@@ -1,4 +1,18 @@
 services:
+  # Cloudflare Tunnel (optional — uncomment to use instead of direct HTTPS)
+  # Docs: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+  # 1. Set CLOUDFLARE_TUNNEL_TOKEN in .env
+  # 2. Uncomment below
+  # 3. Optionally remove Caddy's "ports:" block to close 80/443
+  # tunnel:
+  #   image: cloudflare/cloudflared:latest
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+  #   restart: unless-stopped
+  #   networks:
+  #     - budak-net
+
   caddy:
     image: caddy:2-alpine
     ports:
@@ -20,7 +34,10 @@ services:
     environment:
       - DB_URL=postgres://${DB_USER:-budak}:${DB_PASSWORD:-budak}@db:5432/${DB_NAME:-budak}
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_EXPIRY=${JWT_ACCESS_EXPIRY:-15m}
+      - JWT_REFRESH_EXPIRY=${JWT_REFRESH_EXPIRY:-7d}
       - REGISTRATION_OPEN=${REGISTRATION_OPEN:-false}
+      - WHITELIST_ENABLED=${WHITELIST_ENABLED:-false}
     volumes:
       - ./whitelist.txt:/app/whitelist.txt:ro
     depends_on:
