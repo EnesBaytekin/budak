@@ -33,14 +33,11 @@ docker compose -f docker-compose.dev.yml up -d
 # 1. Copy the example env file
 cp release/.env.example .env
 
-# 2. Copy the Caddyfile (required for reverse proxy)
-cp release/Caddyfile .
-
-# 3. Edit .env with your domain and secrets
+# 2. Edit .env with your domain and secrets
 #    (DOMAIN, JWT_SECRET, DB_PASSWORD are required)
 vim .env
 
-# 4. Start all services
+# 3. Start all services
 docker compose up -d
 ```
 
@@ -121,7 +118,6 @@ Use Cloudflare Tunnel if you prefer not to open ports 80/443, or want to tunnel 
 .
 ├── docker-compose.yml       # Production services
 ├── .env                     # Your configuration (excluded from git)
-├── Caddyfile                # Caddy reverse proxy config
 ├── certs/                   # Custom TLS certificates (optional)
 │   ├── cert.pem
 │   └── key.pem
@@ -130,6 +126,8 @@ Use Cloudflare Tunnel if you prefer not to open ports 80/443, or want to tunnel 
     ├── docker-compose.yml
     └── .env.example
 ```
+
+> The Caddyfile is built into the `enesbaytekin/budak-caddy` image — no separate file needed.
 
 ## Architecture
 
@@ -174,8 +172,8 @@ git push origin v1.0.0
 ```
 
 GitHub Actions will:
-1. Build and push Docker images to Docker Hub
-2. Create a GitHub Release with compose files and env example
+1. Build and push Docker images to Docker Hub (amd64 + arm64)
+2. Create a GitHub Release with compose files, env example, and whitelist.txt
 
 ## License
 

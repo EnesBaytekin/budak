@@ -12,6 +12,7 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /budak .
 COPY internal/db/migrations ./internal/db/migrations
+RUN touch whitelist.txt
 
 EXPOSE 8080
 CMD ["./budak"]
