@@ -1,10 +1,12 @@
 package service
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -20,6 +22,8 @@ type AuthService struct {
 	accessExpiry     time.Duration
 	refreshExpiry    time.Duration
 	registrationOpen bool
+	whitelistEnabled bool
+	whitelistUsers   map[string]bool
 }
 
 func NewAuthService(userRepo *repository.UserRepo) *AuthService {
@@ -27,13 +31,41 @@ func NewAuthService(userRepo *repository.UserRepo) *AuthService {
 	refreshExpiry, _ := time.ParseDuration(getEnv("JWT_REFRESH_EXPIRY", "7d"))
 	registrationOpen := getEnv("REGISTRATION_OPEN", "true") == "true"
 
+	whitelistEnabled := getEnv("WHITELIST_ENABLED", "false") == "true"
+	whitelistUsers := loadWhitelist(whitelistEnabled)
+
 	return &AuthService{
 		userRepo:         userRepo,
 		jwtSecret:        os.Getenv("JWT_SECRET"),
 		accessExpiry:     accessExpiry,
 		refreshExpiry:    refreshExpiry,
 		registrationOpen: registrationOpen,
+		whitelistEnabled: whitelistEnabled,
+		whitelistUsers:   whitelistUsers,
 	}
+}
+
+func loadWhitelist(enabled bool) map[string]bool {
+	users := make(map[string]bool)
+	if !enabled {
+		return users
+	}
+
+	path := getEnv("WHITELIST_FILE", "whitelist.txt")
+	f, err := os.Open(path)
+	if err != nil {
+		return users
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		u := strings.TrimSpace(scanner.Text())
+		if u != "" && !strings.HasPrefix(u, "#") {
+			users[strings.ToLower(u)] = true
+		}
+	}
+	return users
 }
 
 func getEnv(key, fallback string) string {
@@ -45,13 +77,19 @@ func getEnv(key, fallback string) string {
 
 func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest) (*model.AuthResponse, error) {
 	if !s.registrationOpen {
-		// Check if any user exists — if so, deny registration
 		count, err := s.userRepo.Count(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("check users: %w", err)
 		}
 		if count > 0 {
 			return nil, errors.New("registration is closed")
+		}
+	}
+
+	// Whitelist check
+	if s.whitelistEnabled && len(s.whitelistUsers) > 0 {
+		if !s.whitelistUsers[strings.ToLower(req.Username)] {
+			return nil, errors.New("registration not allowed for this username")
 		}
 	}
 
@@ -146,6 +184,10 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 
 func (s *AuthService) IsRegistrationOpen() bool {
 	return s.registrationOpen
+}
+
+func (s *AuthService) IsWhitelistEnabled() bool {
+	return s.whitelistEnabled
 }
 
 type Claims struct {

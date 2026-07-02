@@ -10,8 +10,9 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   registrationOpen: boolean;
+  whitelistEnabled: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
 }
@@ -22,6 +23,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: !!getToken(),
   isLoading: !!getToken(),
   registrationOpen: true,
+  whitelistEnabled: false,
 
   login: async (username, password) => {
     const res = await authApi.login(username, password);
@@ -35,8 +37,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  register: async (username, email, password) => {
-    const res = await authApi.register(username, email, password);
+  register: async (username, password) => {
+    const res = await authApi.register(username, password);
     setToken(res.token);
     setRefreshToken(res.refresh_token);
     // Auto-create a starter tree BEFORE setting authenticated
@@ -70,6 +72,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         isAuthenticated: status.authenticated,
         user: { id: status.user_id, username: status.username } as User,
         registrationOpen: status.registration_open,
+        whitelistEnabled: status.whitelist_enabled,
         isLoading: false,
       });
     } catch {

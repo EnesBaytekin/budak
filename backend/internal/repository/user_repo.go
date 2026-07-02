@@ -17,11 +17,12 @@ func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
 }
 
 func (r *UserRepo) Create(ctx context.Context, req model.RegisterRequest, hashedPassword string) (*model.User, error) {
+	email := req.Username + "@budak.local"
 	var u model.User
 	err := r.pool.QueryRow(ctx,
 		`INSERT INTO users (username, email, password) VALUES ($1, $2, $3)
 		 RETURNING id, username, email, created_at, updated_at`,
-		req.Username, req.Email, hashedPassword,
+		req.Username, email, hashedPassword,
 	).Scan(&u.ID, &u.Username, &u.Email, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create user: %w", err)

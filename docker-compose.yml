@@ -21,6 +21,8 @@ services:
       - DB_URL=postgres://${DB_USER:-budak}:${DB_PASSWORD:-budak}@db:5432/${DB_NAME:-budak}
       - JWT_SECRET=${JWT_SECRET}
       - REGISTRATION_OPEN=${REGISTRATION_OPEN:-false}
+    volumes:
+      - ./whitelist.txt:/app/whitelist.txt:ro
     depends_on:
       db:
         condition: service_healthy

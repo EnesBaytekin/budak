@@ -3,16 +3,20 @@ import { useAuthStore } from "../../store/authStore";
 
 export function RegisterPage({ onSwitch }: { onSwitch: () => void }) {
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const register = useAuthStore((s) => s.register);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (password !== passwordConfirm) {
+      setError("passwords don't match");
+      return;
+    }
     try {
-      await register(username, email, password);
+      await register(username, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     }
@@ -47,19 +51,7 @@ export function RegisterPage({ onSwitch }: { onSwitch: () => void }) {
                   onChange={(e) => setUsername(e.target.value)}
                   className="input input-bordered w-full text-sm"
                   required
-                />
-              </label>
-
-              <label className="form-control w-full">
-                <div className="label py-0 pb-1">
-                  <span className="label-text text-base-content/70 text-sm">email</span>
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input input-bordered w-full text-sm"
-                  required
+                  autoFocus
                 />
               </label>
 
@@ -71,6 +63,20 @@ export function RegisterPage({ onSwitch }: { onSwitch: () => void }) {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="input input-bordered w-full text-sm"
+                  required
+                  minLength={6}
+                />
+              </label>
+
+              <label className="form-control w-full">
+                <div className="label py-0 pb-1">
+                  <span className="label-text text-base-content/70 text-sm">confirm password</span>
+                </div>
+                <input
+                  type="password"
+                  value={passwordConfirm}
+                  onChange={(e) => setPasswordConfirm(e.target.value)}
                   className="input input-bordered w-full text-sm"
                   required
                   minLength={6}

@@ -22,8 +22,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		jsonError(w, "username, email, and password are required", http.StatusBadRequest)
+	if req.Username == "" || req.Password == "" {
+		jsonError(w, "username and password are required", http.StatusBadRequest)
 		return
 	}
 
@@ -80,5 +80,6 @@ func (h *AuthHandler) Status(w http.ResponseWriter, r *http.Request) {
 		"user_id":           GetUserID(r),
 		"username":          GetUsername(r),
 		"registration_open": h.authService.IsRegistrationOpen(),
+		"whitelist_enabled": h.authService.IsWhitelistEnabled(),
 	}, http.StatusOK)
 }
