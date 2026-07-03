@@ -8,7 +8,6 @@ on:
 env:
   IMAGE_BACKEND: enesbaytekin/budak-backend
   IMAGE_FRONTEND: enesbaytekin/budak-frontend
-  IMAGE_CADDY: enesbaytekin/budak-caddy
 
 jobs:
   build:
@@ -64,51 +63,51 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push Caddy
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          dockerfile: docker/caddy/Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.IMAGE_CADDY }}:${{ steps.meta.outputs.version }}
-            ${{ env.IMAGE_CADDY }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Generate version-pinned compose file
         run: |
           sed "s|\${BUDAK_VERSION:-latest}|${{ steps.meta.outputs.version }}|g" \
             release/docker-compose.yml > release/docker-compose.versioned.yml
+
+      - name: Create deployment archive
+        run: |
+          VS="${{ steps.meta.outputs.version_slug }}"
+          mkdir -p "budak-${VS}"
+          cp docker-compose.yml "budak-${VS}/"
+          cp release/docker-compose.versioned.yml "budak-${VS}/docker-compose.yml"
+          cp Caddyfile whitelist.txt "budak-${VS}/"
+          sed "s/BUDAK_VERSION=latest/BUDAK_VERSION=${VS}/" .env.example > "budak-${VS}/.env.example"
+          tar czf "budak-${VS}.tar.gz" "budak-${VS}/"
 
       - name: Generate release body
         run: |
           V="${{ steps.meta.outputs.version }}"
           VS="${{ steps.meta.outputs.version_slug }}"
 
-          echo "## Budak ${VS}" >> .github/release-body.md
-          echo "" >> .github/release-body.md
-          echo "### Deploy" >> .github/release-body.md
-          echo "" >> .github/release-body.md
-          echo "Download \`docker-compose.yml\`, \`.env.example\`, and optionally \`whitelist.txt\` to a directory." >> .github/release-body.md
-          echo "" >> .github/release-body.md
-          echo '1. `cp .env.example .env`' >> .github/release-body.md
-          echo '2. `sed -i "s/JWT_SECRET=.*/JWT_SECRET=$(openssl rand -base64 32)/" .env`' >> .github/release-body.md
-          echo '3. `sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$(openssl rand -base64 16 | tr -dc a-zA-Z0-9)/" .env`' >> .github/release-body.md
-          echo "4. Edit \`.env\` and set your \`DOMAIN\`" >> .github/release-body.md
-          echo '5. `docker compose pull && docker compose up -d`' >> .github/release-body.md
-          echo "6. Open the site, register your admin account, set \`REGISTRATION_OPEN=false\`, restart" >> .github/release-body.md
-          echo "" >> .github/release-body.md
-          echo "> 💡 All config files (Caddyfile, whitelist.txt) are built into the images with sensible defaults." >> .github/release-body.md
-          echo "> To customize, create the file and uncomment the related mount in \`docker-compose.yml\`." >> .github/release-body.md
-          echo "" >> .github/release-body.md
-          echo "> 💡 Also works on ARM (Raspberry Pi, etc.) — images are built for both amd64 and arm64." >> .github/release-body.md
-          echo "" >> .github/release-body.md
-          echo "### Images" >> .github/release-body.md
-          echo "- \`enesbaytekin/budak-backend:${V}\`" >> .github/release-body.md
-          echo "- \`enesbaytekin/budak-frontend:${V}\`" >> .github/release-body.md
-          echo "- \`enesbaytekin/budak-caddy:${V}\`" >> .github/release-body.md
+          cat > .github/release-body.md << EOF
+          ## Budak ${VS}
+
+          ### 🚀 One-Command Deploy
+
+          Download **\`budak-${VS}.tar.gz\`** below, then:
+
+          \`\`\`bash
+          tar xzf budak-${VS}.tar.gz
+          cd budak-${VS}
+          cp .env.example .env
+          sed -i "s/JWT_SECRET=.*/JWT_SECRET=\$(openssl rand -base64 32)/" .env
+          sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=\$(openssl rand -base64 16 | tr -dc a-zA-Z0-9)/" .env
+          echo "Enter your domain (e.g. budak.example.com):" && read domain && [ -n "\$domain" ] && sed -i "s/DOMAIN=.*/DOMAIN=\$domain/" .env
+          docker compose pull && docker compose up -d
+          \`\`\`
+
+          After deploy, open the site, register your admin account, set \`REGISTRATION_OPEN=false\` in \`.env\`, and restart.
+
+          > 💡 Also works on ARM (Raspberry Pi, etc.) — images are built for both amd64 and arm64.
+
+          ### Images
+          - \`enesbaytekin/budak-backend:${V}\`
+          - \`enesbaytekin/budak-frontend:${V}\`
+          EOF
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -117,7 +116,7 @@ jobs:
           body_path: .github/release-body.md
           fail_on_unmatched_files: false
           files: |
-            release/docker-compose.yml
-            release/docker-compose.versioned.yml
+            budak-${{ steps.meta.outputs.version_slug }}.tar.gz
             release/.env.example
+            Caddyfile
             whitelist.txt

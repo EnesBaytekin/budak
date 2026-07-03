@@ -118,6 +118,7 @@ Use Cloudflare Tunnel if you prefer not to open ports 80/443, or want to tunnel 
 .
 ├── docker-compose.yml       # Production services
 ├── .env                     # Your configuration (excluded from git)
+├── Caddyfile                # Caddy reverse proxy config
 ├── certs/                   # Custom TLS certificates (optional)
 │   ├── cert.pem
 │   └── key.pem
@@ -127,7 +128,7 @@ Use Cloudflare Tunnel if you prefer not to open ports 80/443, or want to tunnel 
     └── .env.example
 ```
 
-> The Caddyfile is built into the `enesbaytekin/budak-caddy` image — no separate file needed.
+> **Tip:** When deploying from a release, download all assets (`docker-compose.yml`, `.env.example`, `Caddyfile`, `whitelist.txt`) to the same directory.
 
 ## Architecture
 

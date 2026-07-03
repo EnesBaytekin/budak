@@ -19,15 +19,14 @@ services:
   #     - budak-net
 
   caddy:
-    image: enesbaytekin/budak-caddy:${BUDAK_VERSION:-latest}
+    image: caddy:2-alpine
     ports:
       - "443:443"
       - "80:80"
     volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ${BUDAK_CERTS_DIR:-./certs}:/certs:ro
       - caddy_data:/data
-    # (Optional) Custom Caddyfile: create Caddyfile, then uncomment below:
-    # - ./Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
       - backend
       - frontend
@@ -44,9 +43,8 @@ services:
       - JWT_REFRESH_EXPIRY=${JWT_REFRESH_EXPIRY:-7d}
       - REGISTRATION_OPEN=${REGISTRATION_OPEN:-false}
       - WHITELIST_ENABLED=${WHITELIST_ENABLED:-false}
-    # (Optional) Custom whitelist: create whitelist.txt, then uncomment below:
-    # volumes:
-    #   - ./whitelist.txt:/app/whitelist.txt:ro
+    volumes:
+      - ./whitelist.txt:/app/whitelist.txt:ro
     depends_on:
       db:
         condition: service_healthy
