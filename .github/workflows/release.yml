@@ -86,7 +86,7 @@ jobs:
           cat > .github/release-body.md << EOF
           ## Budak ${VS}
 
-          ### 🚀 One-Command Deploy
+          ### 🚀 One-Command Deploy (Direct HTTPS)
 
           Download **\`budak-${VS}.tar.gz\`** below, then:
 
@@ -101,6 +101,18 @@ jobs:
           \`\`\`
 
           After deploy, open the site, register your admin account, set \`REGISTRATION_OPEN=false\` in \`.env\`, and restart.
+
+          ### ☁️ Cloudflare Tunnel (Alternative)
+
+          If port 80/443 is already in use, or you prefer tunneling:
+
+          1. Follow the tunnel setup steps in the README
+          2. In \`docker-compose.yml\`: uncomment the \`tunnel\` service, comment out Caddy's \`ports:\`
+          3. In Cloudflare dashboard, set tunnel **Public Hostname** → \`http://caddy:80\`
+          4. Run:
+          \`\`\`bash
+          docker compose pull && docker compose up -d
+          \`\`\`
 
           > 💡 Also works on ARM (Raspberry Pi, etc.) — images are built for both amd64 and arm64.
 

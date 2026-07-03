@@ -47,48 +47,47 @@ Your app will be available at **https://your-domain.com** — Caddy auto-provisi
 
 ### HTTPS Options
 
-Budak supports two approaches for HTTPS termination. **Caddy** is the default; **Cloudflare Tunnel** is an optional alternative.
+Budak supports two approaches. **Both use the same Caddyfile** — no changes needed.
 
-#### Option A: Caddy with Let's Encrypt (Default)
+#### Option A: Direct HTTPS with Let's Encrypt (Default)
 
-Set your domain in `.env` and Caddy automatically provisions a free SSL certificate:
+Set your domain in `.env`:
 
 ```env
 DOMAIN=budak.example.com
 ```
 
-No additional setup needed. Caddy handles HTTP-01 challenges on ports 80/443.
+Caddy automatically provisions a free SSL certificate on ports 80/443.
 
-#### Option B: Caddy with Custom TLS Certificates
+#### Option B: Cloudflare Tunnel
 
-Place your certificate and key files in a directory (default `./certs/`) and configure:
+Use this if you prefer not to open ports 80/443, or already have services using them.
 
-```env
-DOMAIN=budak.example.com
-BUDAK_CERTS_DIR=./certs
-TLS_CERT_PATH=/certs/cert.pem
-TLS_KEY_PATH=/certs/key.pem
-```
-
-Caddy will use your certs instead of provisioning via Let's Encrypt.
-
-#### Option C: Cloudflare Tunnel (Alternative)
-
-Use Cloudflare Tunnel if you prefer not to open ports 80/443, or want to tunnel through Cloudflare's network.
-
-1. Create a tunnel in Cloudflare Zero Trust dashboard and note the token
-2. Set the token in `.env`:
+1. Create a tunnel in [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) and note the token
+2. In your `.env`:
    ```env
    CLOUDFLARE_TUNNEL_TOKEN=your-tunnel-token-here
    ```
-3. Uncomment the `tunnel` service in `docker-compose.yml`
-4. (Optional) Remove or comment out Caddy's `ports:` block to close 80/443
+3. In `docker-compose.yml`:
+   - **Uncomment** the `tunnel` service block
+   - **Comment out** Caddy's `ports:` block (host 80/443 not needed)
+4. In Cloudflare dashboard, set your tunnel's **Public Hostname** service to `http://caddy:80`
 5. Start the services:
    ```bash
    docker compose up -d
    ```
 
-> **Note:** When using Cloudflare Tunnel, you don't need to set `DOMAIN` for TLS — the tunnel handles encryption. Caddy still runs as an internal reverse proxy.
+> **How it works:** Cloudflare handles HTTPS for you. The tunnel forwards traffic to Caddy via HTTP internally. Caddy doesn't need TLS config — it just routes requests to the right service.
+
+#### Custom TLS Certificates
+
+Place your certificates in `./certs/` and set in `.env`:
+
+```env
+BUDAK_CERTS_DIR=./certs
+TLS_CERT_PATH=/certs/cert.pem
+TLS_KEY_PATH=/certs/key.pem
+```
 
 ---
 

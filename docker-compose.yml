@@ -1,9 +1,13 @@
 services:
-  # Cloudflare Tunnel (optional — uncomment to use instead of direct HTTPS)
+  # ─── Cloudflare Tunnel ───────────────────────────────────
+  # (Optional — uncomment to use instead of direct HTTPS)
   # Docs: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
-  # 1. Set CLOUDFLARE_TUNNEL_TOKEN in .env
-  # 2. Uncomment below
-  # 3. Optionally remove Caddy's "ports:" block to close 80/443
+  #
+  # To use:
+  #   1. Set CLOUDFLARE_TUNNEL_TOKEN in .env
+  #   2. Uncomment the tunnel service below
+  #   3. Comment out Caddy's "ports:" block (close 80/443)
+  #
   # tunnel:
   #   image: cloudflare/cloudflared:latest
   #   command: tunnel --no-autoupdate run
@@ -15,11 +19,17 @@ services:
 
   caddy:
     image: caddy:2-alpine
+    # ── Ports ──────────────────────────────────────────────
+    # Direct HTTPS: leave as-is (Caddy handles TLS on 80/443)
+    # Cloudflare Tunnel: comment all lines below (TLS handled by Cloudflare)
     ports:
       - "443:443"
       - "80:80"
-    # If using Cloudflare Tunnel, comment out ports above (host 80/443 not needed)
     volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${BUDAK_CERTS_DIR:-./certs}:/certs:ro
+      - caddy_data:/data
+    depends_on:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ${BUDAK_CERTS_DIR:-./certs}:/certs:ro
       - caddy_data:/data

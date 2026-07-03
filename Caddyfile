@@ -1,18 +1,28 @@
 # Budak Caddyfile
-# If you have your own certificates, place them in the certs/ directory
-# and set TLS_CERT_PATH and TLS_KEY_PATH environment variables.
-# Otherwise, Caddy will use Let's Encrypt automatically.
+#
+# ┌────────────────────────────────────────────────────────────┐
+# │ Both HTTPS modes below work WITHOUT any changes to this   │
+# │ file. Just choose your setup in docker-compose.yml.       │
+# └────────────────────────────────────────────────────────────┘
+#
+# Option A — Direct HTTPS (Let's Encrypt)
+#   Set DOMAIN=yourdomain.com in .env
+#   Caddy auto-provisions SSL on ports 80/443
+#
+# Option B — Cloudflare Tunnel
+#   Comment out Caddy's ports: block (host 80/443 not needed)
+#   Uncomment the tunnel service in docker-compose.yml
+#   Cloudflare handles HTTPS, Caddy serves HTTP internally
+#
+# Option C — Custom TLS certificates
+#   Set TLS_CERT_PATH + TLS_KEY_PATH in .env
+#   Place certs in ./certs/
 
 {$DOMAIN:-localhost} {
-    # TLS with optional manual cert
-    tls {$TLS_CERT_PATH:-} {$TLS_KEY_PATH:-}
-
-    # Frontend (static files)
     handle_path /api/* {
         reverse_proxy backend:8080
     }
 
-    # Frontend (SPA)
     handle {
         reverse_proxy frontend:80
     }
