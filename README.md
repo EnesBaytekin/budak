@@ -21,11 +21,15 @@ Place `.env` next to the binary:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `PORT` | `8080` | HTTP port |
 | `DB_PATH` | `budak.db` | SQLite database file path |
 | `JWT_SECRET` | — | JWT signing secret (required) |
-| `PORT` | `8080` | HTTP port |
+| `JWT_ACCESS_EXPIRY` | `15m` | Access token expiry |
+| `JWT_REFRESH_EXPIRY` | `7d` | Refresh token expiry |
 | `REGISTRATION_OPEN` | `true` | Allow new user registration |
-| `WHITELIST_ENABLED` | `false` | Restrict registration to usernames in `whitelist.txt` |
+| `WHITELIST_ENABLED` | `false` | Restrict registration to whitelisted usernames |
+| `WHITELIST_FILE` | `whitelist.txt` | Path to whitelist file |
+| `CORS_ORIGINS` | `*` | Allowed CORS origins |
 
 ## Build from source
 
