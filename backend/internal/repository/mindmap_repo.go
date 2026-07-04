@@ -2,23 +2,23 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/enesbaytekin/budak/internal/model"
 )
 
 type MindMapRepo struct {
-	pool *pgxpool.Pool
+	db *sql.DB
 }
 
-func NewMindMapRepo(pool *pgxpool.Pool) *MindMapRepo {
-	return &MindMapRepo{pool: pool}
+func NewMindMapRepo(db *sql.DB) *MindMapRepo {
+	return &MindMapRepo{db: db}
 }
 
 func (r *MindMapRepo) GetPositionsByTreeID(ctx context.Context, treeID string) ([]model.MindMapPosition, error) {
-	rows, err := r.pool.Query(ctx,
-		`SELECT todo_id, tree_id, x, y, updated_at FROM mindmap_positions WHERE tree_id = $1`,
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT todo_id, tree_id, x, y, updated_at FROM mindmap_positions WHERE tree_id = ?`,
 		treeID,
 	)
 	if err != nil {
@@ -38,15 +38,15 @@ func (r *MindMapRepo) GetPositionsByTreeID(ctx context.Context, treeID string) (
 }
 
 func (r *MindMapRepo) UpsertPosition(ctx context.Context, todoID, treeID string, x, y float64) error {
-	_, err := r.pool.Exec(ctx,
-		`INSERT INTO mindmap_positions (todo_id, tree_id, x, y) VALUES ($1, $2, $3, $4)
-		 ON CONFLICT (todo_id) DO UPDATE SET x = $3, y = $4, updated_at = NOW()`,
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO mindmap_positions (todo_id, tree_id, x, y) VALUES (?, ?, ?, ?)
+		 ON CONFLICT (todo_id) DO UPDATE SET x = excluded.x, y = excluded.y, updated_at = datetime('now')`,
 		todoID, treeID, x, y,
 	)
 	return err
 }
 
 func (r *MindMapRepo) DeletePosition(ctx context.Context, todoID string) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM mindmap_positions WHERE todo_id = $1`, todoID)
+	_, err := r.db.ExecContext(ctx, `DELETE FROM mindmap_positions WHERE todo_id = ?`, todoID)
 	return err
 }

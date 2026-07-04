@@ -21,23 +21,24 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	pool, err := db.Connect(ctx)
+	// SQLite
+	database, err := db.Connect(ctx)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer pool.Close()
+	defer database.Close()
 	log.Println("Connected to database")
 
-	// Run migrations
-	if err := db.RunMigrations(pool); err != nil {
+	// Auto-create tables
+	if err := db.AutoMigrate(ctx, database); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 	log.Println("Migrations complete")
 
 	// Repositories
-	userRepo := repository.NewUserRepo(pool)
-	todoRepo := repository.NewTodoRepo(pool)
-	mindmapRepo := repository.NewMindMapRepo(pool)
+	userRepo := repository.NewUserRepo(database)
+	todoRepo := repository.NewTodoRepo(database)
+	mindmapRepo := repository.NewMindMapRepo(database)
 
 	// Services
 	authService := service.NewAuthService(userRepo)

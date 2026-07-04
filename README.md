@@ -2,20 +2,18 @@
 
 A tree-based todo application with mind map visualization.
 
-**Single binary — no Docker, no reverse proxy, no dependencies.**
+**Single binary — no Docker, no database server, no dependencies.**
 
 ## Quick Start
 
 ```bash
-# 1. Download the binary for your platform from Releases
-# 2. Download .env.example
-# 3. Run:
+# 1. Download the binary and .env.example from Releases
+# 2. Run:
 cp .env.example .env
-# Edit .env (set DB_URL and JWT_SECRET)
-./budak-linux-amd64
+JWT_SECRET=$(openssl rand -base64 32) ./budak-linux-amd64
 ```
 
-Open **http://localhost:8080** in your browser.
+Open **http://localhost:8080**
 
 ## Configuration
 
@@ -23,44 +21,11 @@ Place `.env` next to the binary:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_URL` | — | PostgreSQL connection string (required) |
+| `DB_PATH` | `budak.db` | SQLite database file path |
 | `JWT_SECRET` | — | JWT signing secret (required) |
-| `PORT` | `8080` | HTTP port to listen on |
+| `PORT` | `8080` | HTTP port |
 | `REGISTRATION_OPEN` | `true` | Allow new user registration |
-| `WHITELIST_ENABLED` | `false` | Restrict registration to whitelisted usernames |
-
-## Deployment
-
-Budak is a single Go binary with the frontend embedded. Everything runs on one port.
-
-### With Cloudflare Tunnel (optional)
-
-```bash
-# Just run the binary, then point your tunnel to localhost:8080
-./budak
-
-# In Cloudflare dashboard: tunnel → Public Hostname → http://localhost:8080
-```
-
-### With a reverse proxy (optional)
-
-```bash
-# Put nginx/Caddy/Apache in front of :8080, add TLS there
-./budak
-```
-
-## Development
-
-```bash
-# Frontend + backend (hot reload)
-cd frontend
-npm run dev       # → :5173 with API proxy to :8080
-cd ../backend
-DB_URL="postgres://budak:budak@localhost:5432/budak" go run ./cmd/budak
-
-# Or build both:
-./build.sh
-```
+| `WHITELIST_ENABLED` | `false` | Restrict registration to usernames in `whitelist.txt` |
 
 ## Build from source
 
@@ -69,20 +34,15 @@ DB_URL="postgres://budak:budak@localhost:5432/budak" go run ./cmd/budak
 # Produces ./budak (single binary)
 ```
 
-## Architecture
+## Development
 
-```
-┌──────────┐     ┌──────────┐
-│  Binary  │────▶│PostgreSQL│
-│ :8080    │     └──────────┘
-│  API +   │
-│  SPA     │
-└──────────┘
-```
+```bash
+# Frontend (hot reload on :5173 with API proxy)
+cd frontend && npm run dev
 
-- **Backend**: Go + chi router + pgx driver + JWT auth
-- **Frontend**: React 18 + TypeScript + Tailwind CSS + React Flow **(embedded)**
-- **Database**: PostgreSQL 16
+# Backend (standalone, needs binary built first)
+./budak
+```
 
 ## Release Process
 
