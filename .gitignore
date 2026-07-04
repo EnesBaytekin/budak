@@ -1,0 +1,13 @@
+# Built binary
+budak
+budak-*
+
+# Embedded frontend dist
+backend/internal/web/dist/
+
+# Env file
+.env
+
+# OS junk
+.DS_Store
+Thumbs.db

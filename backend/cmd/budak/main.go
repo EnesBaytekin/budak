@@ -14,6 +14,7 @@ import (
 	"github.com/enesbaytekin/budak/internal/db"
 	"github.com/enesbaytekin/budak/internal/repository"
 	"github.com/enesbaytekin/budak/internal/service"
+	"github.com/enesbaytekin/budak/internal/web"
 )
 
 func main() {
@@ -41,8 +42,8 @@ func main() {
 	// Services
 	authService := service.NewAuthService(userRepo)
 
-	// Router
-	router := api.NewRouter(todoRepo, mindmapRepo, authService)
+	// Router — serves API + embedded frontend SPA
+	router := api.NewRouter(todoRepo, mindmapRepo, authService, web.FrontendDist)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -68,7 +69,7 @@ func main() {
 		server.Shutdown(shutdownCtx)
 	}()
 
-	log.Printf("Server listening on :%s", port)
+	log.Printf("Budak listening on :%s", port)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)
 	}
