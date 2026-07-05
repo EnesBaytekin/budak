@@ -54,16 +54,60 @@ export function reorderDown(todoID: string) {
   });
 }
 
-export function importTodos(treeID: string, content: string, format = "auto") {
+export interface FormatConfig {
+  done_prefix?: string;
+  undone_prefix?: string;
+  indent?: string;
+  bullet?: string;
+}
+
+export function importTodos(treeID: string, content: string, format = "auto", config?: FormatConfig) {
   return apiRequest<{ imported: number }>(`/api/v1/trees/${treeID}/import`, {
     method: "POST",
-    body: { content, format },
+    body: { content, format, config },
   });
 }
 
-export function exportTodos(treeID: string, format = "markdown"): Promise<string> {
-  return fetch(
-    `${import.meta.env.VITE_API_URL || ""}/api/v1/trees/${treeID}/export?format=${format}`,
-    { headers: { Authorization: `Bearer ${localStorage.getItem("budak_token")}` } }
-  ).then((r) => r.text());
+export interface PreviewItem {
+  title: string;
+  done: boolean;
+  depth: number;
+}
+
+export interface PreviewResult {
+  items: PreviewItem[];
+  total: number;
+}
+
+export function previewImport(content: string, format = "auto", config?: FormatConfig) {
+  return apiRequest<PreviewResult>(`/api/v1/import/preview`, {
+    method: "POST",
+    body: { content, format, config },
+    skipAuth: true,
+  });
+}
+
+const API_BASE = import.meta.env.VITE_API_URL || "";
+const TOKEN_KEY = "budak_token";
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function exportTodos(treeID: string, format = "markdown", config?: FormatConfig): Promise<string> {
+  const params = new URLSearchParams({ format });
+  if (config?.done_prefix) params.set("done_prefix", config.done_prefix);
+  if (config?.undone_prefix) params.set("undone_prefix", config.undone_prefix);
+  if (config?.indent) params.set("indent", config.indent);
+  if (config?.bullet) params.set("bullet", config.bullet);
+  return fetch(`${API_BASE}/api/v1/trees/${treeID}/export?${params}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  }).then((r) => r.text());
+}
+
+export function previewExport(treeID: string, format = "markdown", config?: FormatConfig) {
+  return apiRequest<{ content: string }>(`/api/v1/trees/${treeID}/export/preview`, {
+    method: "POST",
+    body: { format, config },
+  });
 }

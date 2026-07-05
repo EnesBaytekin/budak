@@ -8,31 +8,24 @@ import (
 	"github.com/enesbaytekin/budak/internal/model"
 )
 
-// parsedTodo is an intermediate struct used during import parsing.
 type parsedTodo struct {
 	Title     string
 	Done      bool
-	Depth     int  // indent level (0 = root)
-	SortOrder int  // order among siblings
-	ParentIdx int  // index of parent in the flat parsed list (-1 = root)
+	Depth     int
+	SortOrder int
+	ParentIdx int
 }
 
-// detectFormat tries to determine the input format from content.
 func detectFormat(content string) string {
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
 		return "plain"
 	}
-
 	hasDash := false
 	hasBracket := false
-
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
-			continue
-		}
-		if strings.HasPrefix(strings.TrimSpace(line), "---") {
 			continue
 		}
 		stripped := strings.TrimSpace(line)
@@ -43,72 +36,88 @@ func detectFormat(content string) string {
 			hasBracket = true
 		}
 	}
-
-	if hasBracket {
-		return "markdown"
-	}
-	if hasDash {
+	if hasBracket || hasDash {
 		return "markdown"
 	}
 	return "plain"
 }
 
-// parseImport parses content string into flat list of parsedTodo items.
-// Parents come before children in the result.
-func parseImport(content, format string) ([]parsedTodo, error) {
+// parseImport parses content with optional custom config.
+// If config is provided with non-zero fields, it uses custom parsing.
+func parseImport(content, format string, cfg ...model.FormatConfig) ([]parsedTodo, error) {
 	if format == "" || format == "auto" {
 		format = detectFormat(content)
 	}
+
+	// Use custom config if provided and has custom fields
+	if len(cfg) > 0 {
+		c := cfg[0]
+		if c.DonePrefix != "" || c.UndonePrefix != "" || c.Indent != "" {
+			return parseCustom(content, c.WithDefaults())
+		}
+	}
+
 	switch format {
 	case "plain":
 		return parseIndented(content)
 	case "markdown":
 		return parseMarkdown(content)
 	case "yaml":
-		return parseIndented(content) // simple fallback
+		return parseIndented(content)
+	case "custom":
+		if len(cfg) > 0 {
+			return parseCustom(content, cfg[0].WithDefaults())
+		}
+		return parseIndented(content)
 	default:
 		return nil, fmt.Errorf("unknown format: %s", format)
 	}
 }
 
-// parseIndented handles indentation-based plain text.
-// Each 2 spaces = 1 level. Supports [x] and [ ] for done status.
-func parseIndented(content string) ([]parsedTodo, error) {
+// parseCustom parses content using fully custom config.
+func parseCustom(content string, c model.FormatConfig) ([]parsedTodo, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	var todos []parsedTodo
-	lineNum := 0
 
 	for scanner.Scan() {
-		lineNum++
 		raw := scanner.Text()
-		trimmed := strings.TrimLeft(raw, " \t")
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "//") {
+		if strings.TrimSpace(raw) == "" {
 			continue
 		}
 
-		indent := len(raw) - len(trimmed)
+		// Measure indent: count leading occurrences of the indent string
+		trimmed := raw
 		depth := 0
-		if indent > 0 {
-			depth = (indent + 1) / 2
+		for strings.HasPrefix(trimmed, c.Indent) {
+			depth++
+			trimmed = trimmed[len(c.Indent):]
+		}
+		trimmed = strings.TrimSpace(trimmed)
+
+		if trimmed == "" {
+			continue
 		}
 
+		// Check for done/undone prefix
 		title := trimmed
 		done := false
-
-		lower := strings.ToLower(strings.TrimSpace(title))
-		if strings.HasPrefix(lower, "[x]") {
-			done = true
-			title = strings.TrimSpace(title[3:])
-		} else if strings.HasPrefix(lower, "[ ]") {
-			done = false
-			title = strings.TrimSpace(title[3:])
+		if c.DonePrefix != "" {
+			if strings.HasPrefix(strings.ToLower(title), strings.ToLower(c.DonePrefix)) {
+				done = true
+				title = strings.TrimSpace(title[len(c.DonePrefix):])
+			}
+		}
+		if !done && c.UndonePrefix != "" {
+			if strings.HasPrefix(strings.ToLower(title), strings.ToLower(c.UndonePrefix)) {
+				done = false
+				title = strings.TrimSpace(title[len(c.UndonePrefix):])
+			}
 		}
 
 		if title == "" {
 			continue
 		}
 
-		// Find parent: last todo with depth < current
 		parentIdx := -1
 		for i := len(todos) - 1; i >= 0; i-- {
 			if todos[i].Depth < depth {
@@ -125,7 +134,7 @@ func parseIndented(content string) ([]parsedTodo, error) {
 		}
 
 		todos = append(todos, parsedTodo{
-			Title:     strings.TrimSpace(title),
+			Title:     title,
 			Done:      done,
 			Depth:     depth,
 			SortOrder: sortOrder,
@@ -136,80 +145,52 @@ func parseIndented(content string) ([]parsedTodo, error) {
 	return todos, nil
 }
 
-// parseMarkdown handles markdown-style lists.
-// Supports: - * + markers, [x] [ ] checkboxes.
-func parseMarkdown(content string) ([]parsedTodo, error) {
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	var todos []parsedTodo
-	lineNum := 0
+func parseIndented(content string) ([]parsedTodo, error) {
+	return parseCustom(content, model.FormatConfig{
+		Indent:       "  ",
+		DonePrefix:   "[x]",
+		UndonePrefix: "[ ]",
+	})
+}
 
+func parseMarkdown(content string) ([]parsedTodo, error) {
+	// Normalize: replace bullets with whitespace-preserving indent,
+	// then parse as plain indented.
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	var processed []string
 	for scanner.Scan() {
-		lineNum++
 		raw := scanner.Text()
 		trimmed := strings.TrimSpace(raw)
 		if trimmed == "" {
 			continue
 		}
 
-		indent := len(raw) - len(strings.TrimLeft(raw, " \t"))
-		depth := 0
-		if indent > 0 {
-			depth = (indent + 1) / 2
-		}
+		// Count leading whitespace (the indent before the bullet or text)
+		leading := raw[:len(raw)-len(strings.TrimLeft(raw, " \t"))]
 
-		// Strip list marker
-		title := trimmed
+		// Strip bullet marker if present
+		body := trimmed
 		for _, prefix := range []string{"- ", "* ", "+ "} {
-			if strings.HasPrefix(title, prefix) {
-				title = title[len(prefix):]
+			if strings.HasPrefix(body, prefix) {
+				body = body[len(prefix):]
 				break
 			}
 		}
 
-		if title == "" {
-			continue
+		// Normalize indent: replace leading with Indent string repetition
+		// Count original indent level (2 spaces = 1 level)
+		indentLen := len(leading)
+		depth := 0
+		if indentLen > 0 {
+			depth = (indentLen + 1) / 2
 		}
-
-		done := false
-		lower := strings.ToLower(strings.TrimSpace(title))
-		if strings.HasPrefix(lower, "[x]") {
-			done = true
-			title = strings.TrimSpace(title[3:])
-		} else if strings.HasPrefix(lower, "[ ]") {
-			done = false
-			title = strings.TrimSpace(title[3:])
-		}
-
-		if title == "" {
-			continue
-		}
-
-		// Find parent
-		parentIdx := -1
-		for i := len(todos) - 1; i >= 0; i-- {
-			if todos[i].Depth < depth {
-				parentIdx = i
-				break
-			}
-		}
-
-		sortOrder := 0
-		for _, t := range todos {
-			if t.ParentIdx == parentIdx {
-				sortOrder++
-			}
-		}
-
-		todos = append(todos, parsedTodo{
-			Title:     strings.TrimSpace(title),
-			Done:      done,
-			Depth:     depth,
-			SortOrder: sortOrder,
-			ParentIdx: parentIdx,
-		})
+		processed = append(processed, strings.Repeat("  ", depth)+body)
 	}
-
-	return todos, nil
+	return parseCustom(strings.Join(processed, "\n"), model.FormatConfig{
+		Indent:       "  ",
+		DonePrefix:   "[x]",
+		UndonePrefix: "[ ]",
+	})
 }
 
 // ─── Export ──────────────────────────────────────────────────────
@@ -220,7 +201,6 @@ type flatExportItem struct {
 	Depth int
 }
 
-// flattenTree converts nested todos into flat export items (pre-order).
 func flattenTree(roots []*model.Todo, depth int) []flatExportItem {
 	var out []flatExportItem
 	for _, t := range roots {
@@ -232,9 +212,17 @@ func flattenTree(roots []*model.Todo, depth int) []flatExportItem {
 	return out
 }
 
-// Export generates text in the requested format from nested todos.
-func Export(roots []*model.Todo, format string) (string, error) {
+func Export(roots []*model.Todo, format string, cfg ...model.FormatConfig) (string, error) {
 	flat := flattenTree(roots, 0)
+
+	// Use custom format if config provided
+	if len(cfg) > 0 {
+		c := cfg[0]
+		if c.Indent != "" || c.DonePrefix != "" || c.UndonePrefix != "" {
+			return exportCustom(flat, c.WithDefaults()), nil
+		}
+	}
+
 	switch format {
 	case "plain":
 		return exportPlain(flat), nil
@@ -244,54 +232,75 @@ func Export(roots []*model.Todo, format string) (string, error) {
 		return exportMarkdown(flat), nil
 	case "yaml":
 		return exportYAML(flat), nil
+	case "custom":
+		if len(cfg) > 0 {
+			return exportCustom(flat, cfg[0].WithDefaults()), nil
+		}
+		return exportPlain(flat), nil
 	default:
 		return "", fmt.Errorf("unknown export format: %s", format)
 	}
 }
 
-func exportPlain(items []flatExportItem) string {
+func exportCustom(items []flatExportItem, c model.FormatConfig) string {
 	var b strings.Builder
 	for _, item := range items {
-		indent := strings.Repeat("  ", item.Depth)
-		check := " "
-		if item.Done {
-			check = "x"
+		b.WriteString(strings.Repeat(c.Indent, item.Depth))
+		if c.Bullet != "" {
+			b.WriteString(c.Bullet)
 		}
-		b.WriteString(fmt.Sprintf("%s[%s] %s\n", indent, check, item.Title))
+		if item.Done {
+			b.WriteString(c.DonePrefix + " ")
+		} else {
+			b.WriteString(c.UndonePrefix + " ")
+		}
+		b.WriteString(item.Title)
+		b.WriteString(c.EOL)
 	}
 	return b.String()
+}
+
+func exportPlain(items []flatExportItem) string {
+	return exportCustom(items, model.FormatConfig{
+		Indent:       "  ",
+		DonePrefix:   "[x]",
+		UndonePrefix: "[ ]",
+		Bullet:       "",
+		EOL:          "\n",
+	})
 }
 
 func exportPlainSimple(items []flatExportItem) string {
 	var b strings.Builder
 	for _, item := range items {
-		indent := strings.Repeat("  ", item.Depth)
-		b.WriteString(fmt.Sprintf("%s%s\n", indent, item.Title))
+		b.WriteString(strings.Repeat("  ", item.Depth))
+		b.WriteString(item.Title)
+		b.WriteString("\n")
 	}
 	return b.String()
 }
 
 func exportMarkdown(items []flatExportItem) string {
-	var b strings.Builder
-	for _, item := range items {
-		indent := strings.Repeat("  ", item.Depth)
-		check := " "
-		if item.Done {
-			check = "x"
-		}
-		b.WriteString(fmt.Sprintf("%s- [%s] %s\n", indent, check, item.Title))
-	}
-	return b.String()
+	return exportCustom(items, model.FormatConfig{
+		Indent:       "  ",
+		DonePrefix:   "[x]",
+		UndonePrefix: "[ ]",
+		Bullet:       "- ",
+		EOL:          "\n",
+	})
 }
 
 func exportYAML(items []flatExportItem) string {
 	var b strings.Builder
 	b.WriteString("todos:\n")
 	for _, item := range items {
-		indent := strings.Repeat("  ", item.Depth+1)
-		b.WriteString(fmt.Sprintf("%s- title: %s\n", indent, item.Title))
+		b.WriteString(strings.Repeat("  ", item.Depth+1))
+		b.WriteString("- title: ")
+		b.WriteString(item.Title)
+		b.WriteString("\n")
 		if item.Done {
-			b.WriteString(fmt.Sprintf("%s  done: true\n", indent))
+			b.WriteString(strings.Repeat("  ", item.Depth+1))
+			b.WriteString("  done: true\n")
 		}
 	}
 	return b.String()

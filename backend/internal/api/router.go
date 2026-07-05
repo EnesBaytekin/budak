@@ -44,21 +44,22 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 	mindmapHandler := NewMindMapHandler(service.NewMindMapService(mindmapRepo))
 	impexpHandler := NewImpExpHandler(impSvc)
 
-	// ─── API Routes ──────────────────────────────────────
+	// ─── Public Routes ───────────────────────────────────
 
-	// Public
 	r.Route("/api/v1/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
 		r.Post("/refresh", authHandler.Refresh)
 	})
 
-	// Health
 	r.Get("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		jsonResp(w, map[string]string{"status": "ok"}, http.StatusOK)
 	})
 
-	// Protected
+	// Import preview (no auth needed — text parsing only)
+	r.Post("/api/v1/import/preview", impexpHandler.PreviewImport)
+
+	// ─── Protected Routes ────────────────────────────────
 	r.Group(func(r chi.Router) {
 		r.Use(AuthMiddleware(authService))
 
@@ -87,6 +88,7 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 		// Import / Export
 		r.Post("/api/v1/trees/{treeID}/import", impexpHandler.Import)
 		r.Get("/api/v1/trees/{treeID}/export", impexpHandler.Export)
+		r.Post("/api/v1/trees/{treeID}/export/preview", impexpHandler.PreviewExport)
 	})
 
 	// ─── Frontend SPA ────────────────────────────────────
@@ -104,7 +106,6 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 
 			data, err := fs.ReadFile(subFS, path)
 			if err != nil {
-				// SPA fallback — serve index.html for unknown routes
 				data, err = fs.ReadFile(subFS, "index.html")
 				if err != nil {
 					http.Error(w, "Not Found", http.StatusNotFound)

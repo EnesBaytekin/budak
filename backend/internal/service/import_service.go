@@ -16,10 +16,28 @@ func NewImportService(todoRepo *repository.TodoRepo) *ImportService {
 	return &ImportService{todoRepo: todoRepo}
 }
 
+// PreviewImport parses content and returns a preview without saving.
+func (s *ImportService) PreviewImport(content, format string, cfg ...model.FormatConfig) (model.PreviewResponse, error) {
+	parsed, err := parseImport(content, format, cfg...)
+	if err != nil {
+		return model.PreviewResponse{}, fmt.Errorf("parse error: %w", err)
+	}
+
+	items := make([]model.ParseResultItem, len(parsed))
+	for i, p := range parsed {
+		items[i] = model.ParseResultItem{
+			Title: p.Title,
+			Done:  p.Done,
+			Depth: p.Depth,
+		}
+	}
+
+	return model.PreviewResponse{Items: items, Total: len(items)}, nil
+}
+
 // Import parses content and creates todos in the given tree.
-// It returns the number of todos created.
 func (s *ImportService) Import(ctx context.Context, treeID string, req model.ImportRequest) (int, error) {
-	parsed, err := parseImport(req.Content, req.Format)
+	parsed, err := parseImport(req.Content, req.Format, req.Config)
 	if err != nil {
 		return 0, fmt.Errorf("parse error: %w", err)
 	}
@@ -27,8 +45,7 @@ func (s *ImportService) Import(ctx context.Context, treeID string, req model.Imp
 		return 0, nil
 	}
 
-	// Build a map from parsed index to actual todo ID
-	realIDs := make(map[int]string) // parsed index → real todo ID
+	realIDs := make(map[int]string)
 
 	for i, pt := range parsed {
 		var parentID *string
@@ -43,7 +60,6 @@ func (s *ImportService) Import(ctx context.Context, treeID string, req model.Imp
 			return i, fmt.Errorf("create todo at line %d: %w", i+1, err)
 		}
 
-		// If done, update it
 		if pt.Done {
 			done := true
 			if err := s.todoRepo.UpdateTodo(ctx, todo.ID, model.UpdateTodoRequest{Done: &done}); err != nil {
@@ -57,8 +73,8 @@ func (s *ImportService) Import(ctx context.Context, treeID string, req model.Imp
 	return len(parsed), nil
 }
 
-// ExportTree fetches all todos for a tree, builds the tree, and exports in the requested format.
-func (s *ImportService) ExportTree(ctx context.Context, treeID, format string) (string, error) {
+// ExportTree fetches all todos, builds tree, exports in requested format.
+func (s *ImportService) ExportTree(ctx context.Context, treeID, format string, cfg ...model.FormatConfig) (string, error) {
 	todos, err := s.todoRepo.GetTodosByTreeID(ctx, treeID)
 	if err != nil {
 		return "", fmt.Errorf("get todos: %w", err)
@@ -69,7 +85,7 @@ func (s *ImportService) ExportTree(ctx context.Context, treeID, format string) (
 		return "", nil
 	}
 
-	content, err := Export(roots, format)
+	content, err := Export(roots, format, cfg...)
 	if err != nil {
 		return "", fmt.Errorf("export: %w", err)
 	}

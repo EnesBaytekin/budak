@@ -45,3 +45,16 @@ export interface TreeResponse {
   tree: Tree;
   todos: Todo[];
 }
+
+export interface FormatConfig {
+  done_prefix?: string;
+  undone_prefix?: string;
+  indent?: string;
+  bullet?: string;
+}
+
+export interface PreviewItem {
+  title: string;
+  done: boolean;
+  depth: number;
+}

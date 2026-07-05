@@ -47,8 +47,8 @@ interface TreeState {
   moveBefore: (todoID: string, beforeID: string) => Promise<void>;
   moveUp: (todoID: string) => Promise<void>;
   moveDown: (todoID: string) => Promise<void>;
-  importTodos: (content: string, format?: string) => Promise<number>;
-  exportTodos: (format?: string) => Promise<string>;
+  importTodos: (content: string, format?: string, config?: any) => Promise<number>;
+  exportTodos: (format?: string, config?: any) => Promise<string>;
   setEditingTodoID: (id: string | null) => void;
 }
 
@@ -163,18 +163,18 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     await reloadTree(get, set);
   },
 
-  importTodos: async (content, format = "auto") => {
+  importTodos: async (content, format = "auto", config?) => {
     const treeID = get().selectedTreeID;
     if (!treeID) throw new Error("No tree selected");
-    const result = await todosApi.importTodos(treeID, content, format);
+    const result = await todosApi.importTodos(treeID, content, format, config);
     await reloadTree(get, set);
     return result.imported;
   },
 
-  exportTodos: async (format = "markdown") => {
+  exportTodos: async (format = "markdown", config?) => {
     const treeID = get().selectedTreeID;
     if (!treeID) throw new Error("No tree selected");
-    return todosApi.exportTodos(treeID, format);
+    return todosApi.exportTodos(treeID, format, config);
   },
 
   setEditingTodoID: (id) => set({ editingTodoID: id }),
