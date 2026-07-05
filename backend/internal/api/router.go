@@ -1,10 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"io/fs"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -83,17 +85,11 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 	})
 
 	// ─── Frontend SPA ────────────────────────────────────
-
-	// Only register frontend serving if we have an embedded FS
 	if frontendFS != nil {
-		// Resolve possible "dist" subdirectory inside the embed
 		subFS, err := fs.Sub(frontendFS, "dist")
 		if err != nil {
-			// fallback: use the FS as-is
 			subFS = frontendFS
 		}
-
-		fileServer := http.FileServer(http.FS(subFS))
 
 		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 			path := strings.TrimPrefix(r.URL.Path, "/")
@@ -101,14 +97,18 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 				path = "index.html"
 			}
 
-			// Try the requested path; on miss, serve index.html (SPA fallback)
-			if _, err := subFS.Open(path); err != nil {
-				r.URL.Path = "/index.html"
-			} else {
-				r.URL.Path = "/" + path
+			data, err := fs.ReadFile(subFS, path)
+			if err != nil {
+				// SPA fallback — serve index.html for unknown routes
+				data, err = fs.ReadFile(subFS, "index.html")
+				if err != nil {
+					http.Error(w, "Not Found", http.StatusNotFound)
+					return
+				}
+				path = "index.html"
 			}
 
-			fileServer.ServeHTTP(w, r)
+			http.ServeContent(w, r, path, time.Time{}, bytes.NewReader(data))
 		})
 	}
 

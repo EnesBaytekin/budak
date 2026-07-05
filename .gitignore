@@ -8,6 +8,12 @@ backend/internal/web/dist/
 # Env file
 .env
 
+# SQLite database
+*.db
+*.db-wal
+*.db-shm
+cert-cache/
+
 # OS junk
 .DS_Store
 Thumbs.db
