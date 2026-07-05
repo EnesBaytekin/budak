@@ -53,3 +53,17 @@ export function reorderDown(todoID: string) {
     method: "PATCH",
   });
 }
+
+export function importTodos(treeID: string, content: string, format = "auto") {
+  return apiRequest<{ imported: number }>(`/api/v1/trees/${treeID}/import`, {
+    method: "POST",
+    body: { content, format },
+  });
+}
+
+export function exportTodos(treeID: string, format = "markdown"): Promise<string> {
+  return fetch(
+    `${import.meta.env.VITE_API_URL || ""}/api/v1/trees/${treeID}/export?format=${format}`,
+    { headers: { Authorization: `Bearer ${localStorage.getItem("budak_token")}` } }
+  ).then((r) => r.text());
+}

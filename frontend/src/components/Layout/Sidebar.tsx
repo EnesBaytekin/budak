@@ -3,7 +3,8 @@ import { useTreeStore } from "../../store/treeStore";
 import { useAuthStore } from "../../store/authStore";
 import { useMindmapStore } from "../../store/mindmapStore";
 import { useThemeStore } from "../../store/themeStore";
-import { Moon, Sun, Plus, LogOut, X } from "lucide-react";
+import { Moon, Sun, Plus, LogOut, X, Upload, FileDown } from "lucide-react";
+import { ImportModal } from "../ImportModal/ImportModal";
 
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { trees, selectedTreeID, loadTrees, selectTree, createTree, deleteTree } = useTreeStore();
@@ -13,6 +14,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   const { theme, toggle: toggleTheme } = useThemeStore();
   const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const cancelRef = useRef(false);
 
   useEffect(() => {
@@ -155,23 +157,46 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-base-300 flex items-center justify-between">
-          <button
-            onClick={logout}
-            className="btn btn-ghost btn-sm text-base-content/50 hover:text-error"
-          >
-            <LogOut size={14} />
-            sign out
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="btn btn-ghost btn-sm text-base-content/50"
-            title={`Switch to ${theme === "cupcake" ? "dark" : "light"}`}
-          >
-            {theme === "cupcake" ? <Moon size={14} /> : <Sun size={14} />}
-          </button>
+        <div className="p-3 border-t border-base-300 flex flex-col gap-2">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="btn btn-ghost btn-xs text-base-content/50 hover:text-primary flex-1"
+              title="Import / Export"
+            >
+              <Upload size={12} />
+              import
+            </button>
+            <span className="text-base-content/20">/</span>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="btn btn-ghost btn-xs text-base-content/50 hover:text-primary flex-1 text-left"
+              title="Export"
+            >
+              <FileDown size={12} />
+              export
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={logout}
+              className="btn btn-ghost btn-sm text-base-content/50 hover:text-error"
+            >
+              <LogOut size={14} />
+              sign out
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="btn btn-ghost btn-sm text-base-content/50"
+              title={`Switch to ${theme === "cupcake" ? "dark" : "light"}`}
+            >
+              {theme === "cupcake" ? <Moon size={14} /> : <Sun size={14} />}
+            </button>
+          </div>
         </div>
       </aside>
+
+      {showImportModal && <ImportModal onClose={() => setShowImportModal(false)} />}
     </>
   );
 }

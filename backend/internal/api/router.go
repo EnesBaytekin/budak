@@ -16,7 +16,7 @@ import (
 	"github.com/enesbaytekin/budak/internal/service"
 )
 
-func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRepo, authService *service.AuthService, frontendFS fs.FS) http.Handler {
+func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRepo, authService *service.AuthService, impSvc *service.ImportService, frontendFS fs.FS) http.Handler {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -42,6 +42,7 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 	treeHandler := NewTreeHandler(todoRepo)
 	todoHandler := NewTodoHandler(todoRepo)
 	mindmapHandler := NewMindMapHandler(service.NewMindMapService(mindmapRepo))
+	impexpHandler := NewImpExpHandler(impSvc)
 
 	// ─── API Routes ──────────────────────────────────────
 
@@ -82,6 +83,10 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 		r.Post("/api/v1/trees/{treeID}/positions", mindmapHandler.BatchUpsertPositions)
 		r.Put("/api/v1/mindmap/positions/{todoID}", mindmapHandler.UpsertPosition)
 		r.Delete("/api/v1/mindmap/positions/{todoID}", mindmapHandler.DeletePosition)
+
+		// Import / Export
+		r.Post("/api/v1/trees/{treeID}/import", impexpHandler.Import)
+		r.Get("/api/v1/trees/{treeID}/export", impexpHandler.Export)
 	})
 
 	// ─── Frontend SPA ────────────────────────────────────
