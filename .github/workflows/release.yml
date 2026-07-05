@@ -59,9 +59,16 @@ jobs:
           **Single binary — no Docker, no PostgreSQL, no dependencies.**
 
           \`\`\`bash
-          # Pick your platform below, then:
+          # Pick your platform below, then run:
           cp .env.example .env
-          JWT_SECRET="$(openssl rand -base64 32)" ./budak-linux-amd64
+          sed -i "s/JWT_SECRET=.*/JWT_SECRET=\$(openssl rand -base64 32)/" .env
+          ./budak-linux-amd64
+          \`\`\`
+
+          Or set it directly without a .env file:
+
+          \`\`\`bash
+          JWT_SECRET=\$(openssl rand -base64 32) ./budak-linux-amd64
           \`\`\`
 
           | Platform | Binary |
