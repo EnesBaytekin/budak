@@ -1,13 +1,11 @@
 package model
 
-import "time"
-
 type MindMapPosition struct {
-	TodoID    string    `json:"todo_id"`
-	TreeID    string    `json:"tree_id"`
-	X         float64   `json:"x"`
-	Y         float64   `json:"y"`
-	UpdatedAt time.Time `json:"updated_at"`
+	TodoID    string  `json:"todo_id"`
+	TreeID    string  `json:"tree_id"`
+	X         float64 `json:"x"`
+	Y         float64 `json:"y"`
+	UpdatedAt Time    `json:"updated_at"`
 }
 
 type BatchPositionRequest struct {
