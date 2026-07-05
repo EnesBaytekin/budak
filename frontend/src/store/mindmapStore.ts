@@ -70,39 +70,49 @@ export const useMindmapStore = create<MindMapState>((set, get) => ({
       if (s) result.set(todo.id, { x: s.x, y: s.y });
     }
 
-    // Second pass: compute positions for unsaved nodes
-    // Roots: compact horizontal row, Children: below parent
-    let rootCol = 0;
-    const rootSpacing = 260;
+    // Second pass: Archimedean spiral for unsaved nodes
+    // Roots spiral outward from (0, 0).
+    // Children spiral outward from their parent's position.
+    const rootSpacing = 220;
+    const rootAngleStep = 1.1;       // radians (~63°) — fills evenly
+    const childSpacing = 190;
+    const childAngleStep = 0.9;
 
-    const compute = (items: Todo[], defaultParentX?: number, defaultParentY?: number) => {
-      let childOffset = 0;
+    let rootCount = 0;
+    let childCount = 0;
 
+    const compute = (items: Todo[], parentX?: number, parentY?: number, isRoot?: boolean) => {
       for (const todo of items) {
         if (result.has(todo.id)) {
           const pos = result.get(todo.id)!;
-          if (todo.children) compute(todo.children, pos.x, pos.y);
+          if (todo.children) compute(todo.children, pos.x, pos.y, false);
           continue;
         }
 
         let x: number, y: number;
 
-        if (defaultParentX !== undefined && defaultParentY !== undefined) {
-          x = defaultParentX + 60;
-          y = defaultParentY + 80 + childOffset * 50;
-          childOffset++;
+        if (parentX !== undefined && parentY !== undefined && !isRoot) {
+          // Child node — small spiral from parent
+          const angle = childCount * childAngleStep;
+          const radius = childSpacing + childCount * 12;
+          x = parentX + radius * Math.cos(angle);
+          y = parentY + radius * Math.sin(angle);
+          childCount++;
         } else {
-          x = rootCol * rootSpacing;
-          y = 0;
-          rootCol++;
+          // Root node — main spiral from origin
+          const angle = rootCount * rootAngleStep;
+          const radius = rootSpacing + rootCount * 35;
+          x = radius * Math.cos(angle);
+          y = radius * Math.sin(angle);
+          rootCount++;
         }
 
         result.set(todo.id, { x, y });
-        if (todo.children) compute(todo.children, x, y);
+        if (todo.children) compute(todo.children, x, y, false);
       }
     };
 
-    compute(todos, undefined, undefined);
+    compute(todos, undefined, undefined, true);
 
     return result;
   },
