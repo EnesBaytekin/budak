@@ -15,12 +15,10 @@ cp -r frontend/dist backend/internal/web/dist
 
 echo "==> Compiling budak binary…"
 cd backend
-GOTOOLCHAIN=auto go build -o ../budak ./cmd/budak
+GO_CMD="go"
+[ -x /tmp/go/bin/go ] && GO_CMD="/tmp/go/bin/go"
+GONOSUMCHECK=* GONOSUMDB=* GOPROXY=https://proxy.golang.org,direct \
+  "$GO_CMD" build -o ../budak ./cmd/budak
 cd ..
 
 echo "✅ Done: $(pwd)/budak ($(ls -lh budak | awk '{print $5}'))"
-echo ""
-echo "   Next steps:"
-echo "   1. cp .env.example .env"
-echo "   2. Edit .env (set JWT_SECRET)"
-echo "   3. ./budak"

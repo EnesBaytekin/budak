@@ -2,8 +2,9 @@
 budak
 budak-*
 
-# Embedded frontend dist
-backend/internal/web/dist/
+# Embedded frontend dist (built files are ignored, placeholder is tracked)
+backend/internal/web/dist/*
+!backend/internal/web/dist/index.html
 
 # Env file
 .env

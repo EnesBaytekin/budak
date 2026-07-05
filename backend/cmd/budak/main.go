@@ -49,7 +49,7 @@ func main() {
 	authService := service.NewAuthService(userRepo)
 
 	// Router — serves API + embedded frontend SPA
-	router := api.NewRouter(todoRepo, mindmapRepo, authService, impSvc, web.FrontendDist)
+	router := api.NewRouter(todoRepo, mindmapRepo, authService, impSvc, web.FS())
 
 	port := os.Getenv("PORT")
 	if port == "" {

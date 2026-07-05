@@ -7,8 +7,6 @@ A tree-based todo application with mind map visualization.
 ## Quick Start
 
 ```bash
-# 1. Download the binary and .env.example from Releases
-# 2. Run:
 cp .env.example .env
 JWT_SECRET=$(openssl rand -base64 32) ./budak-linux-amd64
 ```
@@ -35,18 +33,22 @@ Place `.env` next to the binary:
 
 ```bash
 ./build.sh
-# Produces ./budak (single binary)
+# Produces ./budak (single binary, frontend embedded)
 ```
 
 ## Development
 
 ```bash
-# Frontend (hot reload on :5173 with API proxy)
-cd frontend && npm run dev
+# Everything on :8080 — auto-builds frontend, no Vite needed
+./dev.sh
 
-# Backend (standalone, needs binary built first)
-./budak
+# With Vite hot reload on :5173 (for frontend work)
+./dev.sh --hot
 ```
+
+Opens **http://localhost:8080** (or **http://localhost:5173** with `--hot`).
+
+> `Ctrl+C` stops everything. No build artifacts remain.
 
 ## Release Process
 
