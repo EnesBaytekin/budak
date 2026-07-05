@@ -100,7 +100,7 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest) (
 
 	user, err := s.userRepo.Create(ctx, req, string(hashedPassword))
 	if err != nil {
-		return nil, fmt.Errorf("create user: %w", err)
+		return nil, err
 	}
 
 	token, refreshToken, err := s.generateTokens(user.ID, user.Username)

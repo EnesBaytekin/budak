@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/enesbaytekin/budak/internal/model"
 	"github.com/google/uuid"
@@ -28,7 +30,10 @@ func (r *UserRepo) Create(ctx context.Context, req model.RegisterRequest, hashed
 		id, req.Username, email, hashedPassword,
 	).Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("create user: %w", err)
+			if isUniqueConstraint(err) {
+				return nil, errors.New("username already taken")
+			}
+			return nil, fmt.Errorf("create user: %w", err)
 	}
 	return &u, nil
 }
@@ -64,4 +69,8 @@ func (r *UserRepo) Count(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("count users: %w", err)
 	}
 	return count, nil
+}
+
+func isUniqueConstraint(err error) bool {
+	return strings.Contains(err.Error(), "UNIQUE constraint")
 }
