@@ -24,7 +24,24 @@ export function clearTokens() {
   localStorage.removeItem(REFRESH_KEY);
 }
 
-async function refreshToken(): Promise<string | null> {
+// ─── Shared refresh promise ──────────────────────────────
+// Prevents multiple concurrent refreshes from racing each other.
+// Only the first caller actually sends the request; others reuse its result.
+let refreshPromise: Promise<string | null> | null = null;
+
+export async function refreshToken(): Promise<string | null> {
+  // If a refresh is already in progress, wait for it
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = doRefresh();
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function doRefresh(): Promise<string | null> {
   const refresh = getRefreshToken();
   if (!refresh) return null;
 
@@ -35,7 +52,9 @@ async function refreshToken(): Promise<string | null> {
       body: JSON.stringify({ refresh_token: refresh }),
     });
     if (!res.ok) {
-      clearTokens();
+      if (res.status === 401 || res.status === 400) {
+        clearTokens();
+      }
       return null;
     }
     const data = await res.json();
@@ -43,7 +62,6 @@ async function refreshToken(): Promise<string | null> {
     setRefreshToken(data.refresh_token);
     return data.token;
   } catch {
-    clearTokens();
     return null;
   }
 }
@@ -71,7 +89,6 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // Token expired, try refresh
   if (res.status === 401 && !skipAuth) {
     const newToken = await refreshToken();
     if (newToken) {

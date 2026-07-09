@@ -75,7 +75,6 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
     if (id) setEditingTodoID(id);
   };
 
-  // Drag & Drop
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("text/plain", todo.id);
     e.dataTransfer.effectAllowed = "move";
@@ -111,11 +110,8 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
     if (dragOver === "child") {
       await moveTodoToParent(draggedId, todo.id);
     } else if (dragOver === "before") {
-      // Find the previous sibling to insert after
       await moveBefore(draggedId, todo.id);
     } else {
-      // "after": insert after this todo
-      // Find next sibling of this todo at the same level
       const flat = flattenTodos(useTreeStore.getState().todos);
       const siblings = flat.filter((f) => f.parentId === todo.parent_id);
       const idx = siblings.findIndex((s) => s.id === todo.id);
@@ -123,7 +119,6 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
       if (next) {
         await moveBefore(draggedId, next.id);
       } else {
-        // No next sibling — move to same parent with max sort_order
         await moveTodoToParent(draggedId, todo.parent_id);
       }
     }
@@ -131,13 +126,15 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
 
   const isActive = activeTodoID === todo.id;
   const dropClass =
-    dragOver === "before" ? "border-t-2 border-primary" :
-    dragOver === "after" ? "border-b-2 border-primary" :
-    dragOver === "child" ? "bg-primary/10 rounded-xl" : "";
+    dragOver === "before" ? "ring-2 ring-primary/50" :
+    dragOver === "after" ? "ring-2 ring-primary/50" :
+    dragOver === "child" ? "ring-2 ring-accent/50" : "";
 
   return (
     <div className="select-none">
-      {dragOver === "before" && <div className="h-0.5 bg-primary mx-2 rounded-full" />}
+      <div style={{ marginLeft: depth > 0 ? 32 : 0 }}
+           className={depth > 0 ? "border-l-[3px] border-base-300 pl-3" : ""}>
+      {dragOver === "before" && <div className="h-0.5 bg-primary/40 mx-6 rounded-full" />}
 
       <div
         ref={rowRef}
@@ -146,22 +143,25 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`group flex items-center gap-1.5 px-2 py-2 rounded-xl transition cursor-pointer ${dropClass} ${
-          isActive ? "bg-primary/5" : todo.done ? "opacity-50 hover:bg-base-100" : "hover:bg-base-100"
-        }`}
-        style={{ paddingLeft: `${depth * 24 + 4}px` }}
+        className={`mx-2 my-1.5 rounded-xl transition-all duration-200 cursor-pointer ${
+          todo.done
+            ? "bg-success/5 border border-success/15 shadow-sm"
+            : "bg-base-100 border border-base-300/60 shadow-sm hover:shadow-md hover:border-base-300"
+        } ${dropClass} ${isActive ? "ring-2 ring-primary/25 shadow-md" : ""}`}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
       >
+        <div className="flex items-center gap-1.5 px-3 py-2.5">
+
         {/* Drag handle */}
-        <span className="text-base-content/15 cursor-grab active:cursor-grabbing shrink-0">
+        <span className="text-base-content/20 cursor-grab active:cursor-grabbing shrink-0 hover:text-base-content/40">
           <GripVertical size={14} />
         </span>
 
         {/* Collapse */}
         {hasChildren ? (
           <button onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
-            className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/30">
+            className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/30 hover:text-base-content/60">
             <ChevronRight size={14} className={`transition-transform ${collapsed ? "" : "rotate-90"}`} />
           </button>
         ) : <div className="w-5 shrink-0" />}
@@ -169,7 +169,9 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
         {/* Checkbox */}
         <button onClick={handleToggle}
           className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center border-2 transition ${
-            todo.done ? "bg-success/20 border-success/40 text-success" : "border-base-300 hover:border-primary/40 bg-base-100"
+            todo.done
+              ? "bg-success/30 border-success/50 text-success-content"
+              : "border-base-300 hover:border-primary/50 bg-base-100"
           }`}>
           {todo.done && <Check size={12} strokeWidth={3} />}
         </button>
@@ -178,15 +180,17 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
         {isEditing ? (
           <input ref={inputRef} type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
             onBlur={saveEdit} onKeyDown={handleInputKey}
-            className="flex-1 min-w-0 bg-transparent text-sm text-base-content outline-none px-1 rounded" autoFocus />
+            className="flex-1 min-w-0 bg-base-200/50 text-sm text-base-content outline-none px-2 py-0.5 rounded" autoFocus />
         ) : (
-          <span className={`flex-1 min-w-0 text-sm leading-relaxed ${todo.done ? "line-through text-base-content/40" : "text-base-content"}`}>
+          <span className={`flex-1 min-w-0 text-sm leading-relaxed ${
+            todo.done ? "line-through text-base-content/40" : "text-base-content"
+          }`}>
             {todo.title || "untitled"}
           </span>
         )}
 
-        {/* Actions — always visible */}
-        <div className="flex items-center gap-0.5 shrink-0">
+        {/* Actions */}
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={handleAddSub}
             className="btn btn-ghost btn-xs p-0 w-6 h-6 min-h-0 text-base-content/40 hover:text-primary"
             title="Add child">
@@ -208,12 +212,23 @@ export function TreeNode({ todo, depth }: TreeNodeProps) {
             <Trash2 size={12} />
           </button>
         </div>
+
+        {/* Mobile actions (always visible) */}
+        <div className="flex items-center gap-0.5 shrink-0 group-hover:hidden sm:hidden">
+          <button onClick={handleAddSub}
+            className="btn btn-ghost btn-xs p-0 w-6 h-6 min-h-0 text-base-content/40 hover:text-primary"
+            title="Add child">
+            <Plus size={14} />
+          </button>
+        </div>
+        </div>
       </div>
 
       {/* Children */}
       {hasChildren && !collapsed && (
         <div>{todo.children.map((child) => <TreeNode key={child.id} todo={child} depth={depth + 1} />)}</div>
       )}
+      </div>
     </div>
   );
 }

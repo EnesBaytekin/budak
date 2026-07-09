@@ -3,6 +3,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# Load .env from project root if present
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
+
 BACKEND_PID=""
 FRONTEND_PID=""
 

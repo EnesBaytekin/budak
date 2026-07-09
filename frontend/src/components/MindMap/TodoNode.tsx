@@ -50,18 +50,22 @@ export const TodoNode = memo(({ data }: NodeProps) => {
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      className={`rounded-xl border-2 shadow-md transition-all min-w-[150px] max-w-[230px] ${
-        todo.done ? "bg-success/5 border-success/20" : "bg-base-100 border-base-300 hover:border-primary/40"
+      className={`min-w-[160px] max-w-[240px] rounded-2xl shadow-lg transition-all duration-200 ${
+        todo.done
+          ? "bg-success/10 shadow-success/10"
+          : "bg-base-100 shadow-lg hover:shadow-xl"
       }`}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
       <Handle type="source" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
 
-      <div className="p-3">
-        <div className="flex items-start gap-2">
+      <div className="p-3.5">
+        <div className="flex items-start gap-2.5">
           <button onClick={(e) => { e.stopPropagation(); handleToggle(); }}
-            className={`mt-0.5 w-5 h-5 rounded-full shrink-0 flex items-center justify-center border-2 transition ${
-              todo.done ? "bg-success/20 border-success/40 text-success" : "bg-base-100 border-base-300 hover:border-primary/40"
+            className={`mt-0.5 w-5 h-5 rounded-full shrink-0 flex items-center justify-center border-2 transition-all ${
+              todo.done
+                ? "bg-success/30 border-success/50 text-success-content"
+                : "bg-base-100 border-base-300 hover:border-primary/50"
             }`}>
             {todo.done && <Check size={12} strokeWidth={3} />}
           </button>
@@ -69,32 +73,36 @@ export const TodoNode = memo(({ data }: NodeProps) => {
             {isEditing ? (
               <input ref={inputRef} type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                 onBlur={handleSave} onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setIsEditing(false); }}
-                className="w-full bg-transparent text-sm text-base-content outline-none px-1" autoFocus />
+                className="w-full bg-base-200 text-sm text-base-content outline-none px-2 py-0.5 rounded" autoFocus />
             ) : (
-              <span className={`text-sm block cursor-text leading-snug ${todo.done ? "line-through text-base-content/40" : "text-base-content"}`}>
+              <span className={`text-sm block cursor-text leading-snug ${
+                todo.done ? "line-through text-base-content/40" : "text-base-content"
+              }`}>
                 {todo.title || "untitled"}
               </span>
             )}
           </div>
         </div>
 
-        {/* Bottom row */}
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-2.5 flex items-center justify-between pt-1.5 border-t border-base-200">
           <div className="flex items-center gap-1">
-            {/* Connect button — always visible */}
             <button onClick={(e) => { e.stopPropagation(); onConnectStart?.(todo.id); }}
-              className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-secondary" title="Connect: make this node a parent">
+              className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/40 hover:text-secondary" title="Connect">
               <Link2 size={11} />
             </button>
-            {(childCount > 0) ? <span className="text-[10px] text-base-content/30 ml-1">{childCount} sub</span> : null}
+            {(childCount > 0) ? (
+              <span className="text-[10px] font-medium text-base-content/40 ml-1 bg-base-300 px-1.5 py-0.5 rounded-full">
+                {childCount}
+              </span>
+            ) : null}
           </div>
           <div className="flex items-center gap-1">
             <button onClick={(e) => { e.stopPropagation(); onAddChild?.(todo.id); }}
-              className="btn btn-ghost btn-xs text-primary p-0 w-5 h-5 min-h-0" title="Add child">
+              className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/40 hover:text-primary" title="Add child">
               <Plus size={12} />
             </button>
             <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete?")) onDelete?.(todo.id); }}
-              className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/30 hover:text-error" title="Delete">
+              className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 text-base-content/40 hover:text-error" title="Delete">
               <Trash2 size={10} />
             </button>
           </div>

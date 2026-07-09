@@ -27,8 +27,8 @@ type AuthService struct {
 }
 
 func NewAuthService(userRepo *repository.UserRepo) *AuthService {
-	accessExpiry, _ := time.ParseDuration(getEnv("JWT_ACCESS_EXPIRY", "15m"))
-	refreshExpiry, _ := time.ParseDuration(getEnv("JWT_REFRESH_EXPIRY", "7d"))
+	accessExpiry := parseDuration(getEnv("JWT_ACCESS_EXPIRY", "15m"), 15*time.Minute)
+	refreshExpiry := parseDuration(getEnv("JWT_REFRESH_EXPIRY", "168h"), 168*time.Hour) // 7 days
 	registrationOpen := getEnv("REGISTRATION_OPEN", "true") == "true"
 
 	whitelistEnabled := getEnv("WHITELIST_ENABLED", "false") == "true"
@@ -73,6 +73,31 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// parseDuration parses a duration string, supporting "d" (days) and "w" (weeks).
+// Go's time.ParseDuration doesn't support these, so we handle them first.
+// If parsing fails, returns the fallback.
+func parseDuration(s string, fallback time.Duration) time.Duration {
+	s = strings.TrimSpace(s)
+	// Replace "d" and "w" with hours
+	s = strings.ReplaceAll(s, "w", "h")
+	s = strings.ReplaceAll(s, "W", "h")
+	// "7d" → "168h"
+	if strings.Contains(s, "d") || strings.Contains(s, "D") {
+		parts := strings.SplitN(s, "d", 2)
+		if len(parts) == 2 {
+			var days float64
+			if _, err := fmt.Sscanf(parts[0], "%f", &days); err == nil {
+				s = fmt.Sprintf("%fh", days*24) + parts[1]
+			}
+		}
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return fallback
+	}
+	return d
 }
 
 func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest) (*model.AuthResponse, error) {
