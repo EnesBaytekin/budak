@@ -18,8 +18,17 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Set via -ldflags at build time
+var Version = "dev"
+
 func main() {
-	// Load .env from current directory (optional — not an error if missing)
+	// Version flag
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Println(Version)
+		return
+	}
+
+	// Load .env from current directory
 	_ = godotenv.Load()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -45,8 +54,8 @@ func main() {
 	mindmapRepo := repository.NewMindMapRepo(database)
 
 	// Services
-	impSvc := service.NewImportService(todoRepo)
 	authService := service.NewAuthService(userRepo)
+	impSvc := service.NewImportService(todoRepo)
 
 	// Router — serves API + embedded frontend SPA
 	router := api.NewRouter(todoRepo, mindmapRepo, authService, impSvc, web.FS())
@@ -73,7 +82,7 @@ func main() {
 		server.Shutdown(context.Background())
 	}()
 
-	log.Printf("Budak listening on :%s", port)
+	log.Printf("Budak v%s listening on :%s", Version, port)
 	log.Printf("Open http://localhost:%s", port)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)

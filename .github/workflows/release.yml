@@ -15,6 +15,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Extract version
+        id: meta
+        run: |
+          VS="${GITHUB_REF_NAME#v}"
+          echo "version=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+          echo "version_slug=$VS" >> $GITHUB_OUTPUT
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -36,6 +43,7 @@ jobs:
 
       - name: Build binaries (cross-platform)
         run: |
+          VS="${{ steps.meta.outputs.version_slug }}"
           cd backend
           for target in "linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64"; do
             os="${target%/*}"
@@ -43,55 +51,114 @@ jobs:
             suffix=""
             [ "$os" = "windows" ] && suffix=".exe"
             echo "==> Building $os/$arch …"
-            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -o "../budak-${os}-${arch}${suffix}" ./cmd/budak
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build \
+              -ldflags="-X 'main.Version=v${VS}'" \
+              -o "../budak-v${VS}-${os}-${arch}${suffix}" ./cmd/budak
           done
 
       - name: Generate release body
         run: |
-          V="${{ github.ref_name }}"
-          VS="${V#v}"
+          V="${{ steps.meta.outputs.version }}"
+          VS="${{ steps.meta.outputs.version_slug }}"
 
-          cat > .github/release-body.md << EOF
+          cat > .github/release-body.md << RELBODY
           ## Budak ${VS}
 
-          ### 🚀 Quick Deploy
+          ### 🚀 One-Click Deploy
 
-          **Single binary — no Docker, no PostgreSQL, no dependencies.**
+          **Single binary — SQLite, embedded frontend, zero dependencies.**
 
-          \`\`\`bash
-          # Pick your platform below, then run:
-          cp .env.example .env
-          sed -i "s/JWT_SECRET=.*/JWT_SECRET=\$(openssl rand -base64 32)/" .env
-          ./budak-linux-amd64
-          \`\`\`
+          Copy the command for your platform and paste it on your server:
 
-          Or set it directly without a .env file:
+          <details>
+          <summary><b>🐧 Linux x86_64</b></summary>
 
           \`\`\`bash
-          JWT_SECRET=\$(openssl rand -base64 32) ./budak-linux-amd64
+          V=${V}; mkdir -p budak-\${V#v} && cd budak-\${V#v} && \
+          wget -q "https://github.com/EnesBaytekin/budak/releases/download/\${V}/budak-${VS}-linux-amd64" -O budak && \
+          chmod +x budak && \
+          ( [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } ) && \
+          echo "✅ Ready. Run: ./budak"
+          \`\`\`
+          </details>
+
+          <details>
+          <summary><b>🍓 Linux ARM64</b></summary>
+
+          \`\`\`bash
+          V=${V}; mkdir -p budak-\${V#v} && cd budak-\${V#v} && \
+          wget -q "https://github.com/EnesBaytekin/budak/releases/download/\${V}/budak-${VS}-linux-arm64" -O budak && \
+          chmod +x budak && \
+          ( [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } ) && \
+          echo "✅ Ready. Run: ./budak"
+          \`\`\`
+          </details>
+
+          <details>
+          <summary><b>🍎 macOS Intel</b></summary>
+
+          \`\`\`bash
+          V=${V}; mkdir -p budak-\${V#v} && cd budak-\${V#v} && \
+          curl -sL "https://github.com/EnesBaytekin/budak/releases/download/\${V}/budak-${VS}-darwin-amd64" -o budak && \
+          chmod +x budak && \
+          ( [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } ) && \
+          echo "✅ Ready. Run: ./budak"
+          \`\`\`
+          </details>
+
+          <details>
+          <summary><b>🍏 macOS Apple Silicon</b></summary>
+
+          \`\`\`bash
+          V=${V}; mkdir -p budak-\${V#v} && cd budak-\${V#v} && \
+          curl -sL "https://github.com/EnesBaytekin/budak/releases/download/\${V}/budak-${VS}-darwin-arm64" -o budak && \
+          chmod +x budak && \
+          ( [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } ) && \
+          echo "✅ Ready. Run: ./budak"
+          \`\`\`
+          </details>
+
+          <details>
+          <summary><b>🪟 Windows</b> (PowerShell)</summary>
+
+          \`\`\`powershell
+          Invoke-WebRequest -Uri "https://github.com/EnesBaytekin/budak/releases/download/${V}/budak-${VS}-windows-amd64.exe" -OutFile budak.exe
+          if (-not (Test-Path .env)) { Set-Content .env "PORT=8080\nJWT_SECRET=change-me\nREGISTRATION_OPEN=true" }
+          Write-Host "Run: ./budak.exe"
+          \`\`\`
+          </details>
+
+          ### 🔄 Update Existing Installation
+
+          Already running? Replace the binary without touching your data:
+
+          \`\`\`bash
+          # Detects your arch and downloads the right binary
+          pkill budak 2>/dev/null; sleep 1
+          PLAT=\$(uname -m | sed 's/x86_64/linux-amd64/;s/aarch64/linux-arm64/')
+          wget -q "https://github.com/EnesBaytekin/budak/releases/download/${V}/budak-${VS}-\${PLAT}" -O budak
+          chmod +x budak && ./budak
           \`\`\`
 
-          | Platform | Binary |
-          |----------|--------|
-          | Linux x86_64 | \`budak-linux-amd64\` |
-          | Linux ARM64 | \`budak-linux-arm64\` |
-          | macOS Intel | \`budak-darwin-amd64\` |
-          | macOS Apple Silicon | \`budak-darwin-arm64\` |
-          | Windows | \`budak-windows-amd64.exe\` |
+          > 💡 Your \`.env\` and \`budak.db\` are untouched — only the binary changes.
 
-          > Set \`PORT=9090\` to change port, \`DB_PATH=/data/budak.db\` for a custom database path.
-          EOF
+          ### 🔍 Check Version
+
+          \`\`\`bash
+          ./budak version
+          \`\`\`
+          RELBODY
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Budak ${{ github.ref_name }}
+          name: Budak ${{ steps.meta.outputs.version }}
           body_path: .github/release-body.md
           fail_on_unmatched_files: false
           files: |
-            budak-linux-amd64
-            budak-linux-arm64
-            budak-darwin-amd64
-            budak-darwin-arm64
-            budak-windows-amd64.exe
+            budak-${{ steps.meta.outputs.version_slug }}-linux-amd64
+            budak-${{ steps.meta.outputs.version_slug }}-linux-arm64
+            budak-${{ steps.meta.outputs.version_slug }}-darwin-amd64
+            budak-${{ steps.meta.outputs.version_slug }}-darwin-arm64
+            budak-${{ steps.meta.outputs.version_slug }}-windows-amd64.exe
             .env.example

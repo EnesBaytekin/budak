@@ -17,8 +17,9 @@ echo "==> Compiling budak binary…"
 cd backend
 GO_CMD="go"
 [ -x /tmp/go/bin/go ] && GO_CMD="/tmp/go/bin/go"
+VERSION=$(git describe --tags 2>/dev/null || echo "dev")
 GONOSUMCHECK=* GONOSUMDB=* GOPROXY=https://proxy.golang.org,direct \
-  "$GO_CMD" build -o ../budak ./cmd/budak
+  "$GO_CMD" build -ldflags="-X 'main.Version=$VERSION'" -o ../budak ./cmd/budak
 cd ..
 
 echo "✅ Done: $(pwd)/budak ($(ls -lh budak | awk '{print $5}'))"
