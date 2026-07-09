@@ -3,6 +3,7 @@ package web
 import (
 	"embed"
 	"io/fs"
+	"log"
 	"os"
 )
 
@@ -10,25 +11,31 @@ import (
 var embedded embed.FS
 
 // FS returns the frontend filesystem.
-// Return nil when no real frontend build is available (API-only mode).
+// Returns nil when only API mode is available (no embedded frontend).
 func FS() fs.FS {
-	// Real production build has dist/assets/ — anything less is a dev placeholder
-	if _, err := embedded.Open("dist/assets"); err == nil {
+	// Check for a real embedded build (index.html > 200 bytes = real build)
+	f, err := embedded.Open("dist/index.html")
+	if err != nil {
+		log.Println("[budak] no embedded dist/index.html, trying filesystem fallback")
+		return fsFallback()
+	}
+	defer f.Close()
+
+	stat, _ := f.Stat()
+	if stat != nil && stat.Size() > 200 {
 		return embedded
 	}
 
-	// Dev fallback: serve from frontend source dir
-	candidates := []string{
-		"../frontend",
-		"../../frontend",
-		"frontend",
-	}
+	log.Println("[budak] embedded dist/index.html is placeholder, trying filesystem fallback")
+	return fsFallback()
+}
+
+func fsFallback() fs.FS {
+	candidates := []string{"../frontend", "../../frontend", "frontend"}
 	for _, c := range candidates {
 		if fi, err := os.Stat(c + "/dist/index.html"); err == nil && fi.Mode().IsRegular() {
 			return os.DirFS(c)
 		}
 	}
-
-	// No frontend — API only (Vite dev server handles UI)
 	return nil
 }
