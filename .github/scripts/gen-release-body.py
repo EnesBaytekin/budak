@@ -15,29 +15,12 @@ sudo mkdir -p "$D" && \
 [ -f "$D/.env" ] || (echo "PORT=8080" | sudo tee "$D/.env" > /dev/null && echo "JWT_SECRET=$(openssl rand -base64 32)" | sudo tee -a "$D/.env" > /dev/null && echo "REGISTRATION_OPEN=true" | sudo tee -a "$D/.env" > /dev/null) && \
 sudo wget -q "https://github.com/EnesBaytekin/budak/releases/download/{VER}/${N}" -O "$D/$N" && \
 sudo chmod +x "$D/$N" && \
-if [ -f /etc/systemd/system/budak.service ]; then \
-  sudo systemctl restart budak; \
-else \
-  sudo tee /etc/systemd/system/budak.service > /dev/null << SVC
-[Unit]
-Description=Budak
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=$D
-ExecStart=$D/$N
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-SVC
-  sudo systemctl daemon-reload && sudo systemctl enable --now budak; \
-fi
+if [ -f /etc/systemd/system/budak.service ]; then sudo systemctl restart budak; else \
+printf '[Unit]\nDescription=Budak\nAfter=network.target\n\n[Service]\nType=simple\nWorkingDirectory=%s\nExecStart=%s/%s\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$D" "$D" "$N" | sudo tee /etc/systemd/system/budak.service > /dev/null && \
+sudo systemctl daemon-reload && sudo systemctl enable --now budak; fi
 ```
 
-> Everything stays in `/opt/budak/` — binary, `.env`, and `budak.db`.
+> Everything stays in `/opt/budak/`.
 
 ### 🍎 macOS
 
