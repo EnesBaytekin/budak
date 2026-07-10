@@ -40,6 +40,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+          check-latest: true
 
       - name: Build binaries (cross-platform)
         env:
@@ -48,6 +49,7 @@ jobs:
           GONOSUMDB: "*"
           GOPROXY: "https://proxy.golang.org,direct"
         run: |
+          go version
           VS="${{ steps.meta.outputs.version_slug }}"
           cd backend
           for target in "linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64"; do
@@ -60,6 +62,8 @@ jobs:
               -ldflags="-X 'main.Version=v${VS}'" \
               -o "../budak-v${VS}-${os}-${arch}${suffix}" ./cmd/budak
           done
+          echo "=== Release files ==="
+          ls -lh ../budak-*
 
       - name: Generate release body
         run: |
