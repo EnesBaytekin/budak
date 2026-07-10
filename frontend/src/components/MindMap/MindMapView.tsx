@@ -63,6 +63,7 @@ export function MindMapView() {
         id: todo.id, type: "todoNode",
         position: { x: pos.x, y: pos.y }, width: 160, height: 80,
         data: {
+          isRoot: todo.parent_id === null,
           todo,
           onToggle: toggleTodo,
           onTitleChange: updateTodoTitle,

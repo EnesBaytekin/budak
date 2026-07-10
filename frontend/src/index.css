@@ -36,3 +36,14 @@ input, textarea {
     height: 100dvh;
   }
 }
+
+/* MindMap node tints — using DaisyUI variables directly */
+.node-root {
+  background-color: color-mix(in oklch, var(--color-primary) 12%, var(--color-base-100));
+}
+.node-leaf {
+  background-color: color-mix(in oklch, var(--color-accent) 12%, var(--color-base-100));
+}
+.node-done {
+  background-color: color-mix(in oklch, var(--color-success) 30%, var(--color-base-100));
+}

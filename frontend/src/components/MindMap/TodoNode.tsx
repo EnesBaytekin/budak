@@ -6,6 +6,7 @@ import { useTreeStore } from "../../store/treeStore";
 
 type TodoNodeData = {
   todo: Todo;
+  isRoot?: boolean;
   onToggle?: (id: string, done: boolean) => void;
   onTitleChange?: (id: string, title: string) => void;
   onAddChild?: (parentId: string) => void;
@@ -14,7 +15,7 @@ type TodoNodeData = {
 };
 
 export const TodoNode = memo(({ data }: NodeProps) => {
-  const { todo, onToggle, onTitleChange, onAddChild, onConnectStart, onDelete } = data as TodoNodeData;
+  const { todo, isRoot, onToggle, onTitleChange, onAddChild, onConnectStart, onDelete } = data as TodoNodeData;
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,15 +47,23 @@ export const TodoNode = memo(({ data }: NodeProps) => {
   const handleToggle = useCallback(() => { if (onToggle) onToggle(todo.id, !todo.done); }, [todo.id, todo.done, onToggle]);
 
   const childCount = todo.children?.length ?? 0;
+  const isLeaf = childCount === 0 && !isRoot;
+  const isDone = todo.done;
+
+  // Background tint for root / leaf / done nodes
+  let nodeBg = "bg-base-100";
+  if (isDone) {
+    nodeBg = "node-done";
+  } else if (isRoot) {
+    nodeBg = "node-root";
+  } else if (isLeaf) {
+    nodeBg = "node-leaf";
+  }
 
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      className={`min-w-[160px] max-w-[240px] rounded-2xl shadow-lg transition-all duration-200 ${
-        todo.done
-          ? "bg-success/10 shadow-success/10"
-          : "bg-base-100 shadow-lg hover:shadow-xl"
-      }`}
+      className={`min-w-[160px] max-w-[240px] rounded-2xl transition-all duration-200 ${nodeBg} shadow-lg hover:shadow-xl`}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
       <Handle type="source" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
@@ -64,7 +73,7 @@ export const TodoNode = memo(({ data }: NodeProps) => {
           <button onClick={(e) => { e.stopPropagation(); handleToggle(); }}
             className={`mt-0.5 w-5 h-5 rounded-full shrink-0 flex items-center justify-center border-2 transition-all ${
               todo.done
-                ? "bg-success/30 border-success/50 text-success-content"
+                ? "bg-success/40 border-success/60 text-success-content"
                 : "bg-base-100 border-base-300 hover:border-primary/50"
             }`}>
             {todo.done && <Check size={12} strokeWidth={3} />}
@@ -76,7 +85,7 @@ export const TodoNode = memo(({ data }: NodeProps) => {
                 className="w-full bg-base-200 text-sm text-base-content outline-none px-2 py-0.5 rounded" autoFocus />
             ) : (
               <span className={`text-sm block cursor-text leading-snug ${
-                todo.done ? "line-through text-base-content/40" : "text-base-content"
+                todo.done ? "line-through text-base-content/50" : "text-base-content"
               }`}>
                 {todo.title || "untitled"}
               </span>
