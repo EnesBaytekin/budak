@@ -16,6 +16,10 @@ import (
 	"github.com/enesbaytekin/budak/internal/service"
 )
 
+// Version is set via -ldflags at build time.
+// It's declared here so the health endpoint can reference it.
+var Version = "dev"
+
 func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRepo, authService *service.AuthService, impSvc *service.ImportService, frontendFS fs.FS) http.Handler {
 	r := chi.NewRouter()
 
@@ -53,7 +57,12 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 	})
 
 	r.Get("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		jsonResp(w, map[string]string{"status": "ok"}, http.StatusOK)
+		hasFS := frontendFS != nil
+		jsonResp(w, map[string]interface{}{
+			"status":       "ok",
+			"version":      Version,
+			"has_frontend": hasFS,
+		}, http.StatusOK)
 	})
 
 	// Import preview (no auth needed — text parsing only)
@@ -106,6 +115,7 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 
 			data, err := fs.ReadFile(subFS, path)
 			if err != nil {
+				// SPA fallback — route all unknown paths to index.html
 				data, err = fs.ReadFile(subFS, "index.html")
 				if err != nil {
 					http.Error(w, "Not Found", http.StatusNotFound)
@@ -114,7 +124,7 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 				path = "index.html"
 			}
 
-			http.ServeContent(w, r, path, time.Time{}, bytes.NewReader(data))
+			http.ServeContent(w, r, path, time.Now(), bytes.NewReader(data))
 		})
 	}
 
