@@ -63,7 +63,7 @@ jobs:
               -o "../budak-v${VS}-${os}-${arch}${suffix}" ./cmd/budak
           done
           echo "=== Release files ==="
-          ls -lh ../budak-*
+          ls -lh ../budak-v*
 
       - name: Generate release body
         run: |
@@ -73,21 +73,19 @@ jobs:
           cat > .github/release-body.md << RELBODY
           ## Budak ${VS}
 
-          ### 🚀 One-Click Deploy
-
           **Single binary — SQLite, embedded frontend, zero dependencies.**
 
-          Copy the command for your platform and paste it on your server:
+          Copy the command for your platform and paste it on your server.
+          Run it for both **first install** and **updates** — same command.
 
           <details>
           <summary><b>🐧 Linux x86_64</b></summary>
 
           \`\`\`bash
-          V=${V}; mkdir -p budak-\${V#v} && cd budak-\${V#v} && \
-          wget -q "https://github.com/EnesBaytekin/budak/releases/download/\${V}/budak-${VS}-linux-amd64" -O budak && \
-          chmod +x budak && \
-          ( [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } ) && \
-          echo "✅ Ready. Run: ./budak"
+          V=${V}; N="budak-${V}-linux-amd64"; \\
+          [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } && \\
+          wget -q "https://github.com/EnesBaytekin/budak/releases/download/\${V}/\${N}" && \\
+          chmod +x "\${N}" && echo "✅ Ready" && sudo systemctl restart budak 2>/dev/null || ./"\${N}"
           \`\`\`
           </details>
 
@@ -95,11 +93,10 @@ jobs:
           <summary><b>🍓 Linux ARM64</b></summary>
 
           \`\`\`bash
-          V=${V}; mkdir -p budak-\${V#v} && cd budak-\${V#v} && \
-          wget -q "https://github.com/EnesBaytekin/budak/releases/download/\${V}/budak-${VS}-linux-arm64" -O budak && \
-          chmod +x budak && \
-          ( [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } ) && \
-          echo "✅ Ready. Run: ./budak"
+          V=${V}; N="budak-${V}-linux-arm64"; \\
+          [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } && \\
+          wget -q "https://github.com/EnesBaytekin/budak/releases/download/\${V}/\${N}" && \\
+          chmod +x "\${N}" && echo "✅ Ready" && sudo systemctl restart budak 2>/dev/null || ./"\${N}"
           \`\`\`
           </details>
 
@@ -107,11 +104,10 @@ jobs:
           <summary><b>🍎 macOS Intel</b></summary>
 
           \`\`\`bash
-          V=${V}; mkdir -p budak-\${V#v} && cd budak-\${V#v} && \
-          curl -sL "https://github.com/EnesBaytekin/budak/releases/download/\${V}/budak-${VS}-darwin-amd64" -o budak && \
-          chmod +x budak && \
-          ( [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } ) && \
-          echo "✅ Ready. Run: ./budak"
+          V=${V}; N="budak-${V}-darwin-amd64"; \\
+          [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } && \\
+          curl -sL "https://github.com/EnesBaytekin/budak/releases/download/\${V}/\${N}" -o "\${N}" && \\
+          chmod +x "\${N}" && echo "✅ Ready" && ./"\${N}"
           \`\`\`
           </details>
 
@@ -119,11 +115,10 @@ jobs:
           <summary><b>🍏 macOS Apple Silicon</b></summary>
 
           \`\`\`bash
-          V=${V}; mkdir -p budak-\${V#v} && cd budak-\${V#v} && \
-          curl -sL "https://github.com/EnesBaytekin/budak/releases/download/\${V}/budak-${VS}-darwin-arm64" -o budak && \
-          chmod +x budak && \
-          ( [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } ) && \
-          echo "✅ Ready. Run: ./budak"
+          V=${V}; N="budak-${V}-darwin-arm64"; \\
+          [ -f .env ] || { echo "PORT=8080" > .env; echo "JWT_SECRET=\$(openssl rand -base64 32)" >> .env; echo "REGISTRATION_OPEN=true" >> .env; } && \\
+          curl -sL "https://github.com/EnesBaytekin/budak/releases/download/\${V}/\${N}" -o "\${N}" && \\
+          chmod +x "\${N}" && echo "✅ Ready" && ./"\${N}"
           \`\`\`
           </details>
 
@@ -131,30 +126,19 @@ jobs:
           <summary><b>🪟 Windows</b> (PowerShell)</summary>
 
           \`\`\`powershell
-          Invoke-WebRequest -Uri "https://github.com/EnesBaytekin/budak/releases/download/${V}/budak-${VS}-windows-amd64.exe" -OutFile budak.exe
-          if (-not (Test-Path .env)) { Set-Content .env "PORT=8080\nJWT_SECRET=change-me\nREGISTRATION_OPEN=true" }
-          Write-Host "Run: ./budak.exe"
+          \$v = "${V}"; \$n = "budak-v${VS}-windows-amd64.exe"; \\
+          if (-not (Test-Path .env)) { Set-Content .env "PORT=8080`nJWT_SECRET=$(openssl rand -base64 32)`nREGISTRATION_OPEN=true" }; \\
+          Invoke-WebRequest -Uri "https://github.com/EnesBaytekin/budak/releases/download/\$v/\$n" -OutFile \$n; \\
+          Write-Host "✅ Run: ./\$n"
           \`\`\`
           </details>
 
-          ### 🔄 Update Existing Installation
-
-          Already running? Replace the binary without touching your data:
-
-          \`\`\`bash
-          # Detects your arch and downloads the right binary
-          pkill budak 2>/dev/null; sleep 1
-          PLAT=\$(uname -m | sed 's/x86_64/linux-amd64/;s/aarch64/linux-arm64/')
-          wget -q "https://github.com/EnesBaytekin/budak/releases/download/${V}/budak-${VS}-\${PLAT}" -O budak
-          chmod +x budak && ./budak
-          \`\`\`
-
-          > 💡 Your \`.env\` and \`budak.db\` are untouched — only the binary changes.
+          > 💡 \`.env\` and \`.db\` files are never overwritten. Only the binary is downloaded.
 
           ### 🔍 Check Version
 
           \`\`\`bash
-          ./budak version
+          ./budak-${VS}-linux-arm64 version
           \`\`\`
           RELBODY
 
@@ -165,9 +149,9 @@ jobs:
           body_path: .github/release-body.md
           fail_on_unmatched_files: false
           files: |
-            budak-${{ steps.meta.outputs.version_slug }}-linux-amd64
-            budak-${{ steps.meta.outputs.version_slug }}-linux-arm64
-            budak-${{ steps.meta.outputs.version_slug }}-darwin-amd64
-            budak-${{ steps.meta.outputs.version_slug }}-darwin-arm64
-            budak-${{ steps.meta.outputs.version_slug }}-windows-amd64.exe
+            budak-v${{ steps.meta.outputs.version_slug }}-linux-amd64
+            budak-v${{ steps.meta.outputs.version_slug }}-linux-arm64
+            budak-v${{ steps.meta.outputs.version_slug }}-darwin-amd64
+            budak-v${{ steps.meta.outputs.version_slug }}-darwin-arm64
+            budak-v${{ steps.meta.outputs.version_slug }}-windows-amd64.exe
             .env.example
