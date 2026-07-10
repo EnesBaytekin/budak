@@ -26,7 +26,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   useEffect(() => {
     if (autoInit.current || selectedTreeID || trees.length === 0) return;
     autoInit.current = true;
-    selectTree(trees[0].id).then(() => loadPositions(trees[0].id));
+    loadPositions(trees[0].id).then(() => selectTree(trees[0].id));
   }, [trees, selectedTreeID, selectTree, loadPositions]);
 
   const handleSelect = async (id: string) => {

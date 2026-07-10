@@ -27,20 +27,21 @@ export function MindMapView() {
   const todos = useTreeStore((s) => s.todos);
   const toggleTodo = useTreeStore((s) => s.toggleTodo);
   const updateTodoTitle = useTreeStore((s) => s.updateTodoTitle);
-  const createTodo = useTreeStore((s) => s.createTodo);
+  const createTodoRaw = useTreeStore((s) => s.createTodoRaw);
+  const reloadTodos = useTreeStore((s) => s.reloadTodos);
   const moveTodoToParent = useTreeStore((s) => s.moveTodoToParent);
   const disconnectTodo = useTreeStore((s) => s.disconnectTodo);
   const deleteTodo = useTreeStore((s) => s.deleteTodo);
   const setEditingTodoID = useTreeStore((s) => s.setEditingTodoID);
   const selectedTreeID = useTreeStore((s) => s.selectedTreeID);
 
-  const { computePositions, markDirty, batchSave, dirtyNodes } = useMindmapStore();
+  const { computePositions, savePositionNow } = useMindmapStore();
+  const storedPositions = useMindmapStore((s) => s.positions);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
   const lastPaneClick = useRef<{ time: number; x: number; y: number } | null>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Connection mode
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
@@ -66,7 +67,16 @@ export function MindMapView() {
           onToggle: toggleTodo,
           onTitleChange: updateTodoTitle,
           onDelete: (id: string) => { if (confirm("Delete?")) deleteTodo(id); },
-          onAddChild: async (parentId: string) => { const id = await createTodo("", parentId); if (id) setEditingTodoID(id); },
+          onAddChild: async (parentId: string) => {
+            const todo = await createTodoRaw("", parentId);
+            if (!todo || !selectedTreeID) return;
+            const pn = nodes.find(n => n.id === parentId);
+            const px = pn ? pn.position.x + 120 : 0;
+            const py = pn ? pn.position.y + 40 : 0;
+            await savePositionNow(todo.id, selectedTreeID, px, py);
+            await reloadTodos();
+            setEditingTodoID(todo.id);
+          },
           onConnectStart: (nodeId: string) => {
             setConnectingFrom(nodeId);
             setConnectMouse(null);
@@ -90,41 +100,28 @@ export function MindMapView() {
     ae(todos);
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [todos, computePositions, toggleTodo, updateTodoTitle, createTodo, deleteTodo, setEditingTodoID, setNodes, setEdges]);
+  }, [todos, computePositions, toggleTodo, updateTodoTitle, createTodoRaw, reloadTodos, deleteTodo, setEditingTodoID, setNodes, setEdges, selectedTreeID, savePositionNow, storedPositions]);
 
-  // Auto-save positions
-  useEffect(() => {
-    if (dirtyNodes.size > 0 && selectedTreeID) {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => batchSave(selectedTreeID!), 2000);
-    }
-    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [dirtyNodes.size, selectedTreeID, batchSave]);
-  useEffect(() => {
-    return () => { if (dirtyNodes.size > 0 && selectedTreeID) batchSave(selectedTreeID); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // Drag stop → save position immediately
   const onNodeDragStop = useCallback((_event: any, node: Node) => {
-    if (selectedTreeID) markDirty(node.id, selectedTreeID, node.position.x, node.position.y);
-  }, [selectedTreeID, markDirty]);
+    if (selectedTreeID) savePositionNow(node.id, selectedTreeID, node.position.x, node.position.y);
+  }, [selectedTreeID, savePositionNow, storedPositions]);
 
-  // Pane double-click → new root
+  // Pane double-click → new root at click position
   const onPaneClick = useCallback((event: React.MouseEvent) => {
     if (!selectedTreeID || !rfInstance) return;
     const now = Date.now();
     const last = lastPaneClick.current;
     if (last && now - last.time < 300 && Math.abs(event.clientX - last.x) < 10 && Math.abs(event.clientY - last.y) < 10) {
       const pos = rfInstance.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      createTodo("", null).then((id) => { if (!id) return; markDirty(id, selectedTreeID, pos.x, pos.y); setEditingTodoID(id); });
+      createTodoRaw("", null).then(async (todo) => { if (!todo || !selectedTreeID) return; await savePositionNow(todo.id, selectedTreeID, pos.x, pos.y); await reloadTodos(); setEditingTodoID(todo.id); });
       lastPaneClick.current = null;
     } else {
       lastPaneClick.current = { time: now, x: event.clientX, y: event.clientY };
     }
-  }, [selectedTreeID, rfInstance, createTodo, markDirty, setEditingTodoID]);
+  }, [selectedTreeID, rfInstance, createTodoRaw, reloadTodos, savePositionNow, setEditingTodoID]);
 
-  // --- Connection mode: click a node to connect ---
-  // Track mouse for the preview line
+  // Track mouse during connection
   useEffect(() => {
     if (!connectingFrom) return;
     const onMove = (e: PointerEvent) => {
@@ -138,9 +135,7 @@ export function MindMapView() {
   // Node click in connection mode → connect
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     if (!connectingFrom || !selectedTreeID) return;
-    if (node.id === connectingFrom) return; // same node
-
-    // Circular check
+    if (node.id === connectingFrom) return;
     const isCirc = (childId: string, parentId: string): boolean => {
       if (childId === parentId) return true;
       for (const e of edges) { if (e.source === childId && isCirc(e.target, parentId)) return true; }
@@ -153,21 +148,25 @@ export function MindMapView() {
     setConnectMouse(null);
   }, [connectingFrom, selectedTreeID, edges, moveTodoToParent]);
 
-  // Click pane → cancel connection / dismiss context menu
   const onPaneClickConn = useCallback(() => {
     setCtxMenu(null);
     if (connectingFrom) { setConnectingFrom(null); setConnectMouse(null); }
   }, [connectingFrom]);
 
-  const handleAddRoot = async () => { const id = await createTodo("", null); if (id) setEditingTodoID(id); };
+  const handleAddRoot = async () => {
+    if (!rfInstance || !selectedTreeID) return;
+    const vp = rfInstance.getViewport();
+    const cx = (-vp.x + window.innerWidth / 2) / vp.zoom;
+    const cy = (-vp.y + window.innerHeight / 2) / vp.zoom;
+    const todo = await createTodoRaw("", null);
+    if (todo && selectedTreeID) { await savePositionNow(todo.id, selectedTreeID, cx, cy); await reloadTodos(); setEditingTodoID(todo.id); }
+  };
 
-  // Context menu
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     event.preventDefault();
     setCtxMenu({ nodeId: node.id, x: event.clientX, y: event.clientY });
   }, []);
 
-  // Close context menu on any click
   useEffect(() => {
     if (!ctxMenu) return;
     const close = () => setCtxMenu(null);
@@ -175,7 +174,6 @@ export function MindMapView() {
     return () => window.removeEventListener("click", close);
   }, [ctxMenu]);
 
-  // Preview line data (flow coordinates)
   const connLineData = connectingFrom && connectMouse ? (() => {
     const sn = nodes.find((n) => n.id === connectingFrom);
     if (!sn || !rfInstance) return null;
@@ -252,7 +250,6 @@ export function MindMapView() {
         </div>
       )}
 
-      {/* Context menu */}
       {ctxMenu && (
         <div className="fixed z-50 bg-base-100 border border-base-300 rounded-xl shadow-xl py-1 min-w-[180px]"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}>

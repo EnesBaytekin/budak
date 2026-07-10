@@ -37,6 +37,8 @@ interface TreeState {
   createTree: (title: string) => Promise<Tree>;
   deleteTree: (id: string) => Promise<void>;
   createTodo: (title?: string, parentID?: string | null, beforeID?: string | null) => Promise<string | null>;
+  createTodoRaw: (title?: string, parentID?: string | null) => Promise<Todo | null>;
+  reloadTodos: () => Promise<void>;
   toggleTodo: (todoID: string, done: boolean) => Promise<void>;
   updateTodoTitle: (todoID: string, title: string) => Promise<void>;
   deleteTodo: (todoID: string) => Promise<void>;
@@ -94,6 +96,16 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     const todo = await todosApi.createTodo(treeID, title, parentID, beforeID);
     await reloadTree(get, set);
     return todo.id;
+  },
+
+  createTodoRaw: async (title?: string, parentID?: string | null) => {
+    const treeID = get().selectedTreeID;
+    if (!treeID) return null;
+    return todosApi.createTodo(treeID, title || "", parentID || null, null);
+  },
+
+  reloadTodos: async () => {
+    await reloadTree(get, set);
   },
 
   toggleTodo: async (todoID, done) => {
