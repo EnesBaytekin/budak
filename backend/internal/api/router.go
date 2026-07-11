@@ -102,27 +102,36 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 
 	// ─── Frontend SPA ────────────────────────────────────
 	if frontendFS != nil {
-		subFS, err := fs.Sub(frontendFS, "dist")
-		if err != nil {
-			subFS = frontendFS
-		}
-
 		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 			path := strings.TrimPrefix(r.URL.Path, "/")
 			if path == "" {
 				path = "index.html"
 			}
 
-			data, err := fs.ReadFile(subFS, path)
+			// Read directly with dist/ prefix — fs.Sub(embed.FS) can fail silently
+			data, err := fs.ReadFile(frontendFS, "dist/"+path)
 			if err != nil {
-				// SPA fallback — route all unknown paths to index.html
-				data, err = fs.ReadFile(subFS, "index.html")
+				data, err = fs.ReadFile(frontendFS, "dist/index.html")
 				if err != nil {
 					http.Error(w, "Not Found", http.StatusNotFound)
 					return
 				}
 				path = "index.html"
 			}
+
+			// Set content type from extension
+			if strings.HasSuffix(path, ".js") {
+				w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			} else if strings.HasSuffix(path, ".css") {
+				w.Header().Set("Content-Type", "text/css; charset=utf-8")
+			} else if strings.HasSuffix(path, ".svg") {
+				w.Header().Set("Content-Type", "image/svg+xml")
+			} else if strings.HasSuffix(path, ".html") {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			}
+
+			// Prevent Cloudflare from modifying/corrupting assets
+			w.Header().Set("Cache-Control", "no-transform, public, max-age=31536000, immutable")
 
 			http.ServeContent(w, r, path, time.Now(), bytes.NewReader(data))
 		})
