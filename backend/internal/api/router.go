@@ -1,12 +1,11 @@
 package api
 
 import (
-	"bytes"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -101,6 +100,7 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 	})
 
 	// ─── Frontend SPA ────────────────────────────────────
+	// ─── Frontend SPA ────────────────────────────────────
 	if frontendFS != nil {
 		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 			path := strings.TrimPrefix(r.URL.Path, "/")
@@ -108,7 +108,6 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 				path = "index.html"
 			}
 
-			// Read directly with dist/ prefix — fs.Sub(embed.FS) can fail silently
 			data, err := fs.ReadFile(frontendFS, "dist/"+path)
 			if err != nil {
 				data, err = fs.ReadFile(frontendFS, "dist/index.html")
@@ -119,21 +118,21 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 				path = "index.html"
 			}
 
-			// Set content type from extension
+			// Set Content-Type from extension
 			if strings.HasSuffix(path, ".js") {
 				w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 			} else if strings.HasSuffix(path, ".css") {
 				w.Header().Set("Content-Type", "text/css; charset=utf-8")
 			} else if strings.HasSuffix(path, ".svg") {
 				w.Header().Set("Content-Type", "image/svg+xml")
-			} else if strings.HasSuffix(path, ".html") {
+			} else {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			}
 
-			// Prevent Cloudflare from modifying/corrupting assets
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
 			w.Header().Set("Cache-Control", "no-transform, public, max-age=31536000, immutable")
-
-			http.ServeContent(w, r, path, time.Now(), bytes.NewReader(data))
+			w.WriteHeader(http.StatusOK)
+			w.Write(data)
 		})
 	}
 
