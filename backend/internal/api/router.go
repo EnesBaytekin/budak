@@ -16,7 +16,6 @@ import (
 )
 
 // Version is set via -ldflags at build time.
-// It's declared here so the health endpoint can reference it.
 var Version = "dev"
 
 func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRepo, authService *service.AuthService, impSvc *service.ImportService, frontendFS fs.FS) http.Handler {
@@ -64,7 +63,7 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 		}, http.StatusOK)
 	})
 
-	// Import preview (no auth needed — text parsing only)
+	// Import preview (no auth needed)
 	r.Post("/api/v1/import/preview", impexpHandler.PreviewImport)
 
 	// ─── Protected Routes ────────────────────────────────
@@ -100,7 +99,6 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 	})
 
 	// ─── Frontend SPA ────────────────────────────────────
-	// ─── Frontend SPA ────────────────────────────────────
 	if frontendFS != nil {
 		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 			path := strings.TrimPrefix(r.URL.Path, "/")
@@ -108,33 +106,55 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 				path = "index.html"
 			}
 
+			// Determine Content-Type from extension BEFORE fallback
+			ctype := detectContentType(path)
+
 			data, err := fs.ReadFile(frontendFS, "dist/"+path)
 			if err != nil {
+				// Real asset missing → 404 (don't serve index.html as .js/.css)
+				if ctype != "text/html; charset=utf-8" {
+					http.Error(w, "Not Found", http.StatusNotFound)
+					return
+				}
+				// SPA fallback for unknown routes
 				data, err = fs.ReadFile(frontendFS, "dist/index.html")
 				if err != nil {
 					http.Error(w, "Not Found", http.StatusNotFound)
 					return
 				}
-				path = "index.html"
 			}
 
-			// Set Content-Type from extension
-			if strings.HasSuffix(path, ".js") {
-				w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-			} else if strings.HasSuffix(path, ".css") {
-				w.Header().Set("Content-Type", "text/css; charset=utf-8")
-			} else if strings.HasSuffix(path, ".svg") {
-				w.Header().Set("Content-Type", "image/svg+xml")
-			} else {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			}
-
+			w.Header().Set("Content-Type", ctype)
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
 			w.Header().Set("Cache-Control", "no-transform, public, max-age=31536000, immutable")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.WriteHeader(http.StatusOK)
 			w.Write(data)
 		})
 	}
 
 	return r
+}
+
+// detectContentType returns the MIME type for a file path based on extension.
+func detectContentType(path string) string {
+	if strings.HasSuffix(path, ".js") {
+		return "application/javascript; charset=utf-8"
+	}
+	if strings.HasSuffix(path, ".css") {
+		return "text/css; charset=utf-8"
+	}
+	if strings.HasSuffix(path, ".svg") {
+		return "image/svg+xml"
+	}
+	if strings.HasSuffix(path, ".png") {
+		return "image/png"
+	}
+	if strings.HasSuffix(path, ".ico") {
+		return "image/x-icon"
+	}
+	if strings.HasSuffix(path, ".woff2") {
+		return "font/woff2"
+	}
+	return "text/html; charset=utf-8"
 }
