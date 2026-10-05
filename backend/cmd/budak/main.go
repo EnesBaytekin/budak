@@ -22,6 +22,9 @@ import (
 var Version = "dev"
 
 func main() {
+	// Expose the build version to the API layer (health endpoint).
+	api.Version = Version
+
 	// Version flag
 	if len(os.Args) > 1 && os.Args[1] == "version" {
 		fmt.Println(Version)
@@ -83,7 +86,7 @@ func main() {
 		server.Shutdown(context.Background())
 	}()
 
-	log.Printf("Budak v%s listening on :%s", Version, port)
+	log.Printf("Budak %s listening on :%s", Version, port)
 	log.Printf("Open http://localhost:%s", port)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)

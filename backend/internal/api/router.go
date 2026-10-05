@@ -133,7 +133,13 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 
 			w.Header().Set("Content-Type", ctype)
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
-			w.Header().Set("Cache-Control", "no-transform, public, max-age=31536000, immutable")
+			// index.html is the SPA entry point: never cache it so a new deploy
+			// is picked up immediately. Hashed /assets/* files are immutable.
+			cacheControl := "public, max-age=31536000, immutable"
+			if ctype == "text/html; charset=utf-8" {
+				cacheControl = "no-cache"
+			}
+			w.Header().Set("Cache-Control", cacheControl)
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.WriteHeader(http.StatusOK)
 			w.Write(data)
