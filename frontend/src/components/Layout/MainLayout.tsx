@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "./Sidebar";
 import { TodoTreeView } from "../TodoTree/TodoTreeView";
 import { MindMapView } from "../MindMap/MindMapView";
 import { useTreeStore } from "../../store/treeStore";
+import { useMindmapStore } from "../../store/mindmapStore";
 import { Menu } from "lucide-react";
+import { getPrefs, savePrefs, type UserPrefs } from "../../api/prefs";
 
 type View = "tree" | "mindmap";
 
@@ -11,6 +13,48 @@ export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [view, setView] = useState<View>("tree");
   const selectedTreeID = useTreeStore((s) => s.selectedTreeID);
+  const selectTree = useTreeStore((s) => s.selectTree);
+  const loadTrees = useTreeStore((s) => s.loadTrees);
+  const reset = useTreeStore((s) => s.reset);
+  const loadPositions = useMindmapStore((s) => s.loadPositions);
+
+  // Restore last session on mount: preferred tree + view, else first tree.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      reset();
+      const trees = await loadTrees();
+      const prefs = await getPrefs().catch(() => ({} as UserPrefs));
+      if (cancelled) return;
+      if (prefs.view) setView(prefs.view);
+
+      const target =
+        prefs.selected_tree_id && trees.some((t) => t.id === prefs.selected_tree_id)
+          ? prefs.selected_tree_id
+          : trees[0]?.id ?? null;
+
+      if (target) {
+        await loadPositions(target);
+        if (!cancelled) await selectTree(target);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reset, loadTrees, loadPositions, selectTree]);
+
+  // Save view when switching tabs
+  const handleViewChange = useCallback((newView: View) => {
+    setView(newView);
+    savePrefs({ selected_tree_id: selectedTreeID || undefined, view: newView }).catch(() => {});
+  }, [selectedTreeID]);
+
+  // Save selection when tree or view changes
+  useEffect(() => {
+    if (selectedTreeID) {
+      savePrefs({ selected_tree_id: selectedTreeID, view }).catch(() => {});
+    }
+  }, [selectedTreeID, view]);
 
   const tabs: { id: View; label: string }[] = [
     { id: "tree", label: "tree" },
@@ -37,7 +81,7 @@ export function MainLayout() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setView(tab.id)}
+                onClick={() => handleViewChange(tab.id)}
                 className={`join-item btn btn-sm ${
                   view === tab.id ? "btn-primary" : "btn-ghost"
                 }`}

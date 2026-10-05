@@ -127,3 +127,39 @@ func (h *TreeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	jsonResp(w, map[string]string{"status": "ok"}, http.StatusOK)
 }
+
+func (h *TreeHandler) ReorderUp(w http.ResponseWriter, r *http.Request) {
+	h.reorder(w, r, true)
+}
+
+func (h *TreeHandler) ReorderDown(w http.ResponseWriter, r *http.Request) {
+	h.reorder(w, r, false)
+}
+
+func (h *TreeHandler) reorder(w http.ResponseWriter, r *http.Request, up bool) {
+	treeID := chi.URLParam(r, "treeID")
+	userID := GetUserID(r)
+
+	tree, err := h.todoRepo.GetTreeByID(r.Context(), treeID)
+	if err != nil {
+		jsonError(w, "tree not found", http.StatusNotFound)
+		return
+	}
+	if tree.UserID != userID {
+		jsonError(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	var reorderErr error
+	if up {
+		reorderErr = h.todoRepo.ReorderTreeUp(r.Context(), userID, treeID)
+	} else {
+		reorderErr = h.todoRepo.ReorderTreeDown(r.Context(), userID, treeID)
+	}
+	if reorderErr != nil {
+		jsonError(w, "failed to reorder tree", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResp(w, map[string]string{"status": "ok"}, http.StatusOK)
+}

@@ -36,7 +36,6 @@ export function MindMapView() {
   const selectedTreeID = useTreeStore((s) => s.selectedTreeID);
 
   const { computePositions, savePositionNow } = useMindmapStore();
-  const storedPositions = useMindmapStore((s) => s.positions);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -101,12 +100,12 @@ export function MindMapView() {
     ae(todos);
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [todos, computePositions, toggleTodo, updateTodoTitle, createTodoRaw, reloadTodos, deleteTodo, setEditingTodoID, setNodes, setEdges, selectedTreeID, savePositionNow, storedPositions]);
+  }, [todos, computePositions, toggleTodo, updateTodoTitle, createTodoRaw, reloadTodos, deleteTodo, setEditingTodoID, setNodes, setEdges, selectedTreeID, savePositionNow]);
 
   // Drag stop → save position immediately
   const onNodeDragStop = useCallback((_event: any, node: Node) => {
     if (selectedTreeID) savePositionNow(node.id, selectedTreeID, node.position.x, node.position.y);
-  }, [selectedTreeID, savePositionNow, storedPositions]);
+  }, [selectedTreeID, savePositionNow]);
 
   // Pane double-click → new root at click position
   const onPaneClick = useCallback((event: React.MouseEvent) => {

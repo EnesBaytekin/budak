@@ -36,12 +36,19 @@ func scanTodo(scanner interface{ Scan(dest ...interface{}) error }) (model.Todo,
 
 func (r *TodoRepo) CreateTree(ctx context.Context, userID string, title string) (*model.Tree, error) {
 	id := uuid.New().String()
+	var sortOrder int
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(sort_order), 0) + 1 FROM trees WHERE user_id = ?`, userID,
+	).Scan(&sortOrder); err != nil {
+		return nil, fmt.Errorf("compute tree sort order: %w", err)
+	}
+
 	var tr model.Tree
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO trees (id, user_id, title) VALUES (?, ?, ?)
-		 RETURNING id, user_id, title, created_at, updated_at`,
-		id, userID, title,
-	).Scan(&tr.ID, &tr.UserID, &tr.Title, &tr.CreatedAt, &tr.UpdatedAt)
+		`INSERT INTO trees (id, user_id, title, sort_order) VALUES (?, ?, ?, ?)
+		 RETURNING id, user_id, title, sort_order, created_at, updated_at`,
+		id, userID, title, sortOrder,
+	).Scan(&tr.ID, &tr.UserID, &tr.Title, &tr.SortOrder, &tr.CreatedAt, &tr.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create tree: %w", err)
 	}
@@ -50,7 +57,7 @@ func (r *TodoRepo) CreateTree(ctx context.Context, userID string, title string) 
 
 func (r *TodoRepo) GetTreesByUserID(ctx context.Context, userID string) ([]model.Tree, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, user_id, title, created_at, updated_at FROM trees WHERE user_id = ? ORDER BY created_at DESC`,
+		`SELECT id, user_id, title, sort_order, created_at, updated_at FROM trees WHERE user_id = ? ORDER BY sort_order DESC, created_at DESC`,
 		userID,
 	)
 	if err != nil {
@@ -61,7 +68,7 @@ func (r *TodoRepo) GetTreesByUserID(ctx context.Context, userID string) ([]model
 	var trees []model.Tree
 	for rows.Next() {
 		var tr model.Tree
-		if err := rows.Scan(&tr.ID, &tr.UserID, &tr.Title, &tr.CreatedAt, &tr.UpdatedAt); err != nil {
+		if err := rows.Scan(&tr.ID, &tr.UserID, &tr.Title, &tr.SortOrder, &tr.CreatedAt, &tr.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan tree: %w", err)
 		}
 		trees = append(trees, tr)
@@ -72,9 +79,9 @@ func (r *TodoRepo) GetTreesByUserID(ctx context.Context, userID string) ([]model
 func (r *TodoRepo) GetTreeByID(ctx context.Context, treeID string) (*model.Tree, error) {
 	var tr model.Tree
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, title, created_at, updated_at FROM trees WHERE id = ?`,
+		`SELECT id, user_id, title, sort_order, created_at, updated_at FROM trees WHERE id = ?`,
 		treeID,
-	).Scan(&tr.ID, &tr.UserID, &tr.Title, &tr.CreatedAt, &tr.UpdatedAt)
+	).Scan(&tr.ID, &tr.UserID, &tr.Title, &tr.SortOrder, &tr.CreatedAt, &tr.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get tree: %w", err)
 	}
@@ -92,6 +99,59 @@ func (r *TodoRepo) UpdateTree(ctx context.Context, treeID string, title string) 
 func (r *TodoRepo) DeleteTree(ctx context.Context, treeID string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM trees WHERE id = ?`, treeID)
 	return err
+}
+
+func (r *TodoRepo) ReorderTreeUp(ctx context.Context, userID, treeID string) error {
+	return r.swapTreeSort(ctx, userID, treeID, "ASC", ">")
+}
+
+func (r *TodoRepo) ReorderTreeDown(ctx context.Context, userID, treeID string) error {
+	return r.swapTreeSort(ctx, userID, treeID, "DESC", "<")
+}
+
+// swapTreeSort swaps a tree's sort_order with its neighbour within the same
+// user's list. Trees are listed by sort_order DESC (highest = first), so "up"
+// swaps with the next higher sort_order and "down" with the next lower.
+func (r *TodoRepo) swapTreeSort(ctx context.Context, userID, treeID, orderDir, cmp string) error {
+	var cur int
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT sort_order FROM trees WHERE id = ? AND user_id = ?`, treeID, userID,
+	).Scan(&cur); err != nil {
+		return err
+	}
+
+	var neighborID string
+	var neighborSort int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, sort_order FROM trees
+		 WHERE user_id = ? AND id != ? AND sort_order `+cmp+` ?
+		 ORDER BY sort_order `+orderDir+` LIMIT 1`,
+		userID, treeID, cur,
+	).Scan(&neighborID, &neighborSort)
+	if err != nil {
+		return nil // no neighbour to swap with, not an error
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE trees SET sort_order = ?, updated_at = datetime('now') WHERE id = ?`,
+		neighborSort, treeID,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE trees SET sort_order = ?, updated_at = datetime('now') WHERE id = ?`,
+		cur, neighborID,
+	); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // --- Todos ---

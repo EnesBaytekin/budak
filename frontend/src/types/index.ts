@@ -16,6 +16,7 @@ export interface Tree {
   id: string;
   user_id: string;
   title: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }

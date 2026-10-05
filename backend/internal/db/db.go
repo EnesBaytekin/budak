@@ -58,6 +58,7 @@ func AutoMigrate(ctx context.Context, db *sql.DB) error {
 		id          TEXT PRIMARY KEY,
 		user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		title       TEXT NOT NULL DEFAULT 'Untitled Tree',
+		sort_order  INTEGER NOT NULL DEFAULT 0,
 		created_at  TEXT NOT NULL DEFAULT (datetime('now')),
 		updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 	);
@@ -86,11 +87,83 @@ func AutoMigrate(ctx context.Context, db *sql.DB) error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_mindmap_positions_tree_id ON mindmap_positions(tree_id);
+
+		CREATE TABLE IF NOT EXISTS user_prefs (
+			user_id     TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			prefs       TEXT NOT NULL DEFAULT '{}',
+			updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+		);
 	`
 
 	if _, err := db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("auto-migrate: %w", err)
 	}
 
+	if err := migrateTreeSortOrder(ctx, db); err != nil {
+		return fmt.Errorf("migrate tree sort_order: %w", err)
+	}
+
+	return nil
+}
+
+// migrateTreeSortOrder adds the sort_order column to existing trees tables and
+// backfills it so the current display order (newest first) is preserved.
+func migrateTreeSortOrder(ctx context.Context, db *sql.DB) error {
+	hasColumn := false
+	rows, err := db.QueryContext(ctx, "PRAGMA table_info(trees)")
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, ctype string
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			rows.Close()
+			return err
+		}
+		if name == "sort_order" {
+			hasColumn = true
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if hasColumn {
+		return nil
+	}
+
+	if _, err := db.ExecContext(ctx, `ALTER TABLE trees ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`); err != nil {
+		return err
+	}
+
+	// Backfill: assign descending sort_order following the current order
+	// (created_at DESC, newest first) so the existing layout is unchanged.
+	ids, err := db.QueryContext(ctx, `SELECT id FROM trees ORDER BY created_at DESC, id DESC`)
+	if err != nil {
+		return err
+	}
+	var order []string
+	for ids.Next() {
+		var id string
+		if err := ids.Scan(&id); err != nil {
+			ids.Close()
+			return err
+		}
+		order = append(order, id)
+	}
+	ids.Close()
+	if err := ids.Err(); err != nil {
+		return err
+	}
+
+	for i, id := range order {
+		if _, err := db.ExecContext(ctx,
+			`UPDATE trees SET sort_order = ? WHERE id = ?`, len(order)-i, id,
+		); err != nil {
+			return err
+		}
+	}
 	return nil
 }

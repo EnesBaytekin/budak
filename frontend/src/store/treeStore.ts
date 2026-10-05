@@ -32,10 +32,13 @@ interface TreeState {
   setActiveTodoID: (id: string | null) => void;
   selectNextTodo: () => void;
   selectPrevTodo: () => void;
-  loadTrees: () => Promise<void>;
+  loadTrees: () => Promise<Tree[]>;
   selectTree: (id: string) => Promise<void>;
   createTree: (title: string) => Promise<Tree>;
+  renameTree: (id: string, title: string) => Promise<void>;
+  reorderTree: (id: string, direction: "up" | "down") => Promise<void>;
   deleteTree: (id: string) => Promise<void>;
+  reset: () => void;
   createTodo: (title?: string, parentID?: string | null, beforeID?: string | null) => Promise<string | null>;
   createTodoRaw: (title?: string, parentID?: string | null) => Promise<Todo | null>;
   reloadTodos: () => Promise<void>;
@@ -67,6 +70,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   loadTrees: async () => {
     const trees = await treesApi.getTrees();
     set({ trees });
+    return trees;
   },
 
   selectTree: async (id) => {
@@ -81,6 +85,16 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     return tree;
   },
 
+  renameTree: async (id, title) => {
+    await treesApi.updateTree(id, title);
+    await get().loadTrees();
+  },
+
+  reorderTree: async (id, direction) => {
+    await treesApi.reorderTree(id, direction);
+    await get().loadTrees();
+  },
+
   deleteTree: async (id) => {
     await treesApi.deleteTree(id);
     const state = get();
@@ -89,6 +103,14 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     }
     await get().loadTrees();
   },
+
+  reset: () => set({
+    trees: [],
+    selectedTreeID: null,
+    todos: [],
+    editingTodoID: null,
+    activeTodoID: null,
+  }),
 
   createTodo: async (title = "", parentID = null, beforeID?: string | null) => {
     const treeID = get().selectedTreeID;

@@ -56,9 +56,10 @@ func main() {
 	// Services
 	authService := service.NewAuthService(userRepo)
 	impSvc := service.NewImportService(todoRepo)
+	prefsSvc := service.NewPrefsService(database)
 
 	// Router — serves API + embedded frontend SPA
-	router := api.NewRouter(todoRepo, mindmapRepo, authService, impSvc, web.FS())
+	router := api.NewRouter(todoRepo, mindmapRepo, authService, impSvc, prefsSvc, web.FS())
 
 	port := os.Getenv("PORT")
 	if port == "" {

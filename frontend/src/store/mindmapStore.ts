@@ -34,25 +34,45 @@ export const useMindmapStore = create<MindMapState>((set, get) => ({
     return get().positions.get(todoID);
   },
 
-  // ONLY uses saved DB positions. Never assigns spiral positions.
-  // New nodes get position via savePositionNow BEFORE tree reload.
-  // Nodes without positions get {x:0, y:0} (they'll get a real position
-  // on first drag or via savePositionNow).
   computePositions: (todos) => {
     const saved = get().positions;
     const result = new Map<string, { x: number; y: number }>();
 
+    // Phase 1: saved positions from DB (stable, never change)
     const walk = (items: Todo[]) => {
       for (const todo of items) {
         const s = saved.get(todo.id);
-        if (s) {
-          result.set(todo.id, { x: s.x, y: s.y });
-        }
+        if (s) result.set(todo.id, { x: s.x, y: s.y });
         if (todo.children) walk(todo.children);
       }
     };
     walk(todos);
 
+    // Phase 2: spiral position for nodes WITHOUT saved positions (new nodes etc.)
+    const counters = new Map<string, number>();
+    const assign = (items: Todo[], parentId?: string, px?: number, py?: number) => {
+      for (const todo of items) {
+        if (result.has(todo.id)) {
+          const p = result.get(todo.id)!;
+          if (todo.children) assign(todo.children, todo.id, p.x, p.y);
+          continue;
+        }
+        const key = parentId ?? "ROOT";
+        const c = counters.get(key) ?? 0;
+        counters.set(key, c + 1);
+        let x: number, y: number;
+        if (px !== undefined && py !== undefined) {
+          x = px + (170 + c * 15) * Math.cos(c * 0.9);
+          y = py + (170 + c * 15) * Math.sin(c * 0.9);
+        } else {
+          x = (200 + c * 40) * Math.cos(c * 1.1);
+          y = (200 + c * 40) * Math.sin(c * 1.1);
+        }
+        result.set(todo.id, { x, y });
+        if (todo.children) assign(todo.children, todo.id, x, y);
+      }
+    };
+    assign(todos);
     return result;
   },
 }));

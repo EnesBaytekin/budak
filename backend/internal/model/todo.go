@@ -4,6 +4,7 @@ type Tree struct {
 	ID        string  `json:"id"`
 	UserID    string  `json:"user_id"`
 	Title     string  `json:"title"`
+	SortOrder int     `json:"sort_order"`
 	CreatedAt Time    `json:"created_at"`
 	UpdatedAt Time    `json:"updated_at"`
 }

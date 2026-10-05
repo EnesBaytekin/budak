@@ -28,3 +28,9 @@ export function deleteTree(treeID: string) {
     method: "DELETE",
   });
 }
+
+export function reorderTree(treeID: string, direction: "up" | "down") {
+  return apiRequest<{ status: string }>(`/api/v1/trees/${treeID}/reorder-${direction}`, {
+    method: "PATCH",
+  });
+}

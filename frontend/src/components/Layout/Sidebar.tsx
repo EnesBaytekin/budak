@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useTreeStore } from "../../store/treeStore";
 import { useAuthStore } from "../../store/authStore";
 import { useMindmapStore } from "../../store/mindmapStore";
 import { useThemeStore } from "../../store/themeStore";
-import { Moon, Sun, Plus, LogOut, X, Upload, FileDown } from "lucide-react";
+import { Moon, Sun, Plus, LogOut, X, Upload, FileDown, Pencil, ChevronUp, ChevronDown } from "lucide-react";
 import { ImportModal } from "../ImportModal/ImportModal";
+import type { Tree } from "../../types";
 
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  const { trees, selectedTreeID, loadTrees, selectTree, createTree, deleteTree } = useTreeStore();
+  const { trees, selectedTreeID, selectTree, createTree, renameTree, reorderTree, deleteTree } = useTreeStore();
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
   const loadPositions = useMindmapStore((s) => s.loadPositions);
@@ -15,23 +16,14 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [editingTreeID, setEditingTreeID] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
   const cancelRef = useRef(false);
-
-  useEffect(() => {
-    loadTrees();
-  }, [loadTrees]);
-
-  // Auto-select first tree when trees load
-  const autoInit = useRef(false);
-  useEffect(() => {
-    if (autoInit.current || selectedTreeID || trees.length === 0) return;
-    autoInit.current = true;
-    loadPositions(trees[0].id).then(() => selectTree(trees[0].id));
-  }, [trees, selectedTreeID, selectTree, loadPositions]);
+  const editCancelRef = useRef(false);
 
   const handleSelect = async (id: string) => {
-    await selectTree(id);
     await loadPositions(id);
+    await selectTree(id);
   };
 
   const handleCreate = async () => {
@@ -40,8 +32,8 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
     const tree = await createTree(newTitle.trim());
     setNewTitle("");
     if (tree) {
-      await selectTree(tree.id);
       await loadPositions(tree.id);
+      await selectTree(tree.id);
     }
   };
 
@@ -59,6 +51,31 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
     if (confirm("Delete this tree and all its todos?")) {
       await deleteTree(id);
     }
+  };
+
+  const handleRenameStart = (e: React.MouseEvent, tree: Tree) => {
+    e.stopPropagation();
+    setEditingTreeID(tree.id);
+    setEditTitle(tree.title);
+  };
+
+  const handleRenameBlur = () => {
+    if (editCancelRef.current) {
+      editCancelRef.current = false;
+      setEditingTreeID(null);
+      setEditTitle("");
+      return;
+    }
+    const id = editingTreeID;
+    const title = editTitle.trim();
+    setEditingTreeID(null);
+    setEditTitle("");
+    if (id && title) renameTree(id, title);
+  };
+
+  const handleReorder = async (e: React.MouseEvent, id: string, direction: "up" | "down") => {
+    e.stopPropagation();
+    await reorderTree(id, direction);
   };
 
   return (
@@ -121,33 +138,75 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           )}
 
           <div className="flex flex-col gap-0.5">
-            {trees.map((tree) => (
+            {trees.map((tree, idx) => (
               <div
                 key={tree.id}
                 className="group flex items-center"
               >
-                <button
-                  onClick={() => handleSelect(tree.id)}
-                  className={`flex-1 flex items-center justify-between px-3 py-2 rounded-btn text-sm text-left transition ${
-                    selectedTreeID === tree.id
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-base-content/70 hover:bg-base-300"
-                  }`}
-                >
-                  <span className="truncate flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5 shrink-0 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                    {tree.title}
-                  </span>
-                </button>
-                <button
-                  onClick={(e) => handleDelete(e, tree.id)}
-                  className="opacity-0 group-hover:opacity-100 hover:text-error transition shrink-0 btn btn-ghost btn-xs"
-                  title="Delete"
-                >
-                  <X size={14} />
-                </button>
+                {editingTreeID === tree.id ? (
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Escape") { editCancelRef.current = true; e.currentTarget.blur(); }
+                    }}
+                    onBlur={handleRenameBlur}
+                    className="input input-bordered input-sm w-full text-sm"
+                    autoFocus
+                  />
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleSelect(tree.id)}
+                      className={`flex-1 flex items-center justify-between px-3 py-2 rounded-btn text-sm text-left transition min-w-0 ${
+                        selectedTreeID === tree.id
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-base-content/70 hover:bg-base-300"
+                      }`}
+                    >
+                      <span className="truncate flex items-center gap-2">
+                        <svg className="w-3.5 h-3.5 shrink-0 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        {tree.title}
+                      </span>
+                    </button>
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center transition shrink-0">
+                      <button
+                        onClick={(e) => handleRenameStart(e, tree)}
+                        className="btn btn-ghost btn-xs text-base-content/50 hover:text-primary"
+                        title="Rename"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => handleReorder(e, tree.id, "up")}
+                        disabled={idx === 0}
+                        className="btn btn-ghost btn-xs text-base-content/50 disabled:opacity-30"
+                        title="Move up"
+                      >
+                        <ChevronUp size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => handleReorder(e, tree.id, "down")}
+                        disabled={idx === trees.length - 1}
+                        className="btn btn-ghost btn-xs text-base-content/50 disabled:opacity-30"
+                        title="Move down"
+                      >
+                        <ChevronDown size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(e, tree.id)}
+                        className="btn btn-ghost btn-xs text-base-content/50 hover:text-error"
+                        title="Delete"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
             {trees.length === 0 && !adding && (

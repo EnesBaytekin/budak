@@ -18,7 +18,7 @@ import (
 // Version is set via -ldflags at build time.
 var Version = "dev"
 
-func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRepo, authService *service.AuthService, impSvc *service.ImportService, frontendFS fs.FS) http.Handler {
+func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRepo, authService *service.AuthService, impSvc *service.ImportService, prefsSvc *service.PrefsService, frontendFS fs.FS) http.Handler {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -45,6 +45,7 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 	todoHandler := NewTodoHandler(todoRepo)
 	mindmapHandler := NewMindMapHandler(service.NewMindMapService(mindmapRepo))
 	impexpHandler := NewImpExpHandler(impSvc)
+	prefsHandler := NewPrefsHandler(prefsSvc)
 
 	// ─── Public Routes ───────────────────────────────────
 
@@ -77,6 +78,8 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 		r.Get("/api/v1/trees/{treeID}", treeHandler.Get)
 		r.Put("/api/v1/trees/{treeID}", treeHandler.Update)
 		r.Delete("/api/v1/trees/{treeID}", treeHandler.Delete)
+		r.Patch("/api/v1/trees/{treeID}/reorder-up", treeHandler.ReorderUp)
+		r.Patch("/api/v1/trees/{treeID}/reorder-down", treeHandler.ReorderDown)
 
 		r.Get("/api/v1/trees/{treeID}/todos", todoHandler.List)
 		r.Post("/api/v1/trees/{treeID}/todos", todoHandler.Create)
@@ -96,6 +99,10 @@ func NewRouter(todoRepo *repository.TodoRepo, mindmapRepo *repository.MindMapRep
 		r.Post("/api/v1/trees/{treeID}/import", impexpHandler.Import)
 		r.Get("/api/v1/trees/{treeID}/export", impexpHandler.Export)
 		r.Post("/api/v1/trees/{treeID}/export/preview", impexpHandler.PreviewExport)
+
+		// User preferences
+		r.Get("/api/v1/prefs", prefsHandler.Get)
+		r.Put("/api/v1/prefs", prefsHandler.Save)
 	})
 
 	// ─── Frontend SPA ────────────────────────────────────
