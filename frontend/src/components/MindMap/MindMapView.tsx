@@ -41,6 +41,13 @@ export function MindMapView() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
   const lastPaneClick = useRef<{ time: number; x: number; y: number } | null>(null);
+  const nodesRef = useRef<Node[]>([]);
+
+  // Keep nodesRef in sync so callbacks (e.g. add child) read the latest
+  // positions instead of a stale closure over the previous render's nodes.
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
 
   // Connection mode
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
@@ -70,10 +77,17 @@ export function MindMapView() {
           onAddChild: async (parentId: string) => {
             const todo = await createTodoRaw("", parentId);
             if (!todo || !selectedTreeID) return;
-            const pn = nodes.find(n => n.id === parentId);
-            const px = pn ? pn.position.x + 120 : 0;
-            const py = pn ? pn.position.y + 40 : 0;
-            await savePositionNow(todo.id, selectedTreeID, px, py);
+            const pn = nodesRef.current.find((n) => n.id === parentId);
+            if (pn) {
+              // Place the new child right next to its parent (staggered under
+              // any existing siblings so they don't stack exactly on top of each other).
+              const siblings = nodesRef.current.filter(
+                (n) => (n.data as any)?.todo?.parent_id === parentId,
+              ).length;
+              const px = pn.position.x + 200;
+              const py = pn.position.y + siblings * 100;
+              await savePositionNow(todo.id, selectedTreeID, px, py);
+            }
             await reloadTodos();
             setEditingTodoID(todo.id);
           },
