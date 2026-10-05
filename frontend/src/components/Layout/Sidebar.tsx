@@ -141,7 +141,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
             {trees.map((tree, idx) => (
               <div
                 key={tree.id}
-                className="group flex items-center"
+                className="flex items-center gap-1"
               >
                 {editingTreeID === tree.id ? (
                   <input
@@ -173,36 +173,36 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
                         {tree.title}
                       </span>
                     </button>
-                    <div className="opacity-0 group-hover:opacity-100 flex items-center transition shrink-0">
+                    <div className="flex items-center shrink-0 gap-0.5">
                       <button
                         onClick={(e) => handleRenameStart(e, tree)}
-                        className="btn btn-ghost btn-xs text-base-content/50 hover:text-primary"
+                        className="btn btn-ghost btn-xs px-1 text-base-content/50 hover:text-primary hover:bg-base-300"
                         title="Rename"
                       >
-                        <Pencil size={12} />
+                        <Pencil size={14} />
                       </button>
                       <button
                         onClick={(e) => handleReorder(e, tree.id, "up")}
                         disabled={idx === 0}
-                        className="btn btn-ghost btn-xs text-base-content/50 disabled:opacity-30"
+                        className="btn btn-ghost btn-xs px-1 text-base-content/50 hover:text-base-content hover:bg-base-300 disabled:opacity-20"
                         title="Move up"
                       >
-                        <ChevronUp size={12} />
+                        <ChevronUp size={14} />
                       </button>
                       <button
                         onClick={(e) => handleReorder(e, tree.id, "down")}
                         disabled={idx === trees.length - 1}
-                        className="btn btn-ghost btn-xs text-base-content/50 disabled:opacity-30"
+                        className="btn btn-ghost btn-xs px-1 text-base-content/50 hover:text-base-content hover:bg-base-300 disabled:opacity-20"
                         title="Move down"
                       >
-                        <ChevronDown size={12} />
+                        <ChevronDown size={14} />
                       </button>
                       <button
                         onClick={(e) => handleDelete(e, tree.id)}
-                        className="btn btn-ghost btn-xs text-base-content/50 hover:text-error"
+                        className="btn btn-ghost btn-xs px-1 text-base-content/50 hover:text-error hover:bg-base-300"
                         title="Delete"
                       >
-                        <X size={12} />
+                        <X size={14} />
                       </button>
                     </div>
                   </>
